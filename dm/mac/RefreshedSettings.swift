@@ -337,13 +337,14 @@ struct EnvSections: View {
     }
 }
 
-// Paths of this game's data (launcher.c makes the same ones)
+// Paths of this game's data (launcher.c makes the same ones, under $HOME as it does: a test's home, not the account's)
 enum AppPaths {
     static var titleID: String { Bundle.main.object(forInfoDictionaryKey: "DMTitleID") as? String ?? "0000000000000000" }
-    static var support: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/nxnative/\(titleID)") }
+    static var home: URL { ProcessInfo.processInfo.environment["HOME"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) } ?? FileManager.default.homeDirectoryForCurrentUser }
+    static var support: URL { home.appendingPathComponent("Library/Application Support/nxnative/\(titleID)") }
     static var save: URL { URL(fileURLWithPath: ProcessInfo.processInfo.environment["DM_SAVE"] ?? support.appendingPathComponent("save").path) }
-    static var logs: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/nxnative") }
+    static var logs: URL { home.appendingPathComponent("Library/Logs/nxnative") }
     static var log: URL { logs.appendingPathComponent("\(titleID).log") }
     static var envFile: URL { support.appendingPathComponent("env.txt") }
-    static var profiles: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/nxnative/profiles") }
+    static var profiles: URL { home.appendingPathComponent("Library/Application Support/nxnative/profiles") }
 }

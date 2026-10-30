@@ -92,8 +92,11 @@ struct PlayersPage: View {
                             Text("None").tag("none")
                             Divider()
                             ForEach(1...8, id: \.self) { n in Text("The \(Self.ordinal(n)) controller connected").tag("index:\(n)") }
-                            Divider()
-                            ForEach(names(including: p.controller), id: \.self) { n in Text(n).tag("name:" + n) }
+                            let named = names(including: p.controller)
+                            if !named.isEmpty {
+                                Divider()
+                                ForEach(named, id: \.self) { n in Text(n).tag("name:" + n) }
+                            }
                         }
                         .labelsHidden().disabled(input.config.merge).fixedSize()
                         ResetButton(enabled: p.keyboard != def.keyboard || p.mouse != def.mouse || p.controller != def.controller) {
@@ -161,8 +164,10 @@ final class Recorder: ObservableObject {
         switch src {
         case .key:
             monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] e in
-                if e.type == .flagsChanged { if KeyNames.modifierDown(e) { self?.result = .key(Int(e.keyCode)) }; return nil }
-                if !e.isARepeat { self?.result = .key(Int(e.keyCode)) }
+                if let t = e.window?.firstResponder as? NSTextView, t.isFieldEditor { return e }   // typing in the search field searches
+                guard let self, self.result == nil else { return nil }   // the first key is the binding; keys after it, while the popover closes, go nowhere
+                if e.type == .flagsChanged { if KeyNames.modifierDown(e) { self.result = .key(Int(e.keyCode)) }; return nil }
+                if !e.isARepeat { self.result = .key(Int(e.keyCode)) }
                 return nil
             }
         case .pad:
@@ -188,15 +193,17 @@ struct MouseCaptureView: NSViewRepresentable {
     let report: (String) -> Void
     final class V: NSView {
         var report: ((String) -> Void)?
-        override func mouseDown(with e: NSEvent) { report?("left") }
-        override func rightMouseDown(with e: NSEvent) { report?("right") }
+        private var reported = false   // the first button or scroll is the binding, not the rest of a double click or of a scroll's events
+        private func send(_ code: String) { if !reported { reported = true; report?(code) } }
+        override func mouseDown(with e: NSEvent) { send("left") }
+        override func rightMouseDown(with e: NSEvent) { send("right") }
         override func otherMouseDown(with e: NSEvent) {
             let n = e.buttonNumber
-            if n == 2 { report?("middle") } else if n >= 3 && n <= 7 { report?("button\(n + 1)") }
+            if n == 2 { send("middle") } else if n >= 3 && n <= 7 { send("button\(n + 1)") }
         }
         override func scrollWheel(with e: NSEvent) {
             let s: CGFloat = e.isDirectionInvertedFromDevice ? -1 : 1, dy = e.scrollingDeltaY * s, dx = e.scrollingDeltaX * s
-            if abs(dy) > 0.5 { report?(dy > 0 ? "wheel_up" : "wheel_down") } else if abs(dx) > 0.5 { report?(dx > 0 ? "wheel_left" : "wheel_right") }
+            if abs(dy) > 0.5 { send(dy > 0 ? "wheel_up" : "wheel_down") } else if abs(dx) > 0.5 { send(dx > 0 ? "wheel_left" : "wheel_right") }
         }
         override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     }
@@ -212,12 +219,18 @@ struct BindingEditor: View {
     let cancel: () -> Void
     @StateObject private var rec = Recorder()
     @State private var search = ""
+    @FocusState private var searching: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.headline)
             Group {
                 switch source {
-                case .key: prompt("Press a key now", "Any key, including Escape and the modifier keys on their own.")
+                case .key:   // keys record unless the search field has the focus; a click on the prompt takes it back
+                    if searching {
+                        Button { searching = false } label: { prompt("Typing searches the list", "Click here to record a key instead.", busy: false) }.buttonStyle(.plain)
+                    } else {
+                        prompt("Press a key now", "Any key, including Escape and the modifier keys on their own.")
+                    }
                 case .pad: prompt("Press a button or move a stick on a controller", GCController.controllers().isEmpty ? "No controller is connected: pick from the list below." : "Any connected controller.")
                 case .mouse:
                     ZStack {
@@ -232,7 +245,7 @@ struct BindingEditor: View {
                     .frame(height: 90)
                 }
             }
-            TextField("Search", text: $search).textFieldStyle(.roundedBorder)
+            TextField("Search", text: $search).textFieldStyle(.roundedBorder).focused($searching)
             List {
                 ForEach(groups, id: \.self) { g in
                     Section(g) {
@@ -248,17 +261,21 @@ struct BindingEditor: View {
             HStack {
                 Button("Clear", role: .destructive) { done(nil) }.disabled(current == nil)
                 Spacer()
-                Button("Cancel", action: cancel).keyboardShortcut(.cancelAction).disabled(source == .key)
+                Button("Cancel", action: cancel).keyboardShortcut(.cancelAction)   // while recording, Escape is a key to record: the recorder takes it before the shortcut
             }
         }
         .padding(14).frame(width: 340)
-        .onAppear { rec.start(source) }
+        .onAppear {
+            rec.start(source)
+            // the popover gives its text field the focus when it opens, and keys would search instead of recording
+            DispatchQueue.main.async { searching = false; if let w = NSApp.keyWindow, (w.firstResponder as? NSTextView)?.isFieldEditor == true { w.makeFirstResponder(nil) } }
+        }
         .onDisappear { rec.stop() }
         .onChange(of: rec.result) { _, r in if let r { done(r) } }
     }
-    private func prompt(_ t: String, _ sub: String) -> some View {
+    private func prompt(_ t: String, _ sub: String, busy: Bool = true) -> some View {
         HStack(spacing: 10) {
-            ProgressView().controlSize(.small)
+            if busy { ProgressView().controlSize(.small) } else { Image(systemName: "record.circle").foregroundStyle(.tint) }
             VStack(alignment: .leading, spacing: 2) { Text(t).font(.callout.weight(.medium)); Text(sub).font(.caption).foregroundStyle(.secondary) }
         }
         .padding(10).frame(maxWidth: .infinity, alignment: .leading).background(RoundedRectangle(cornerRadius: 8).fill(Color.accentColor.opacity(0.12)))

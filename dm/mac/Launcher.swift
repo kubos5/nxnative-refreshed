@@ -21,24 +21,16 @@ struct LauncherView: View {
     @State private var player = 0
     @State private var confirmReset = false
 
-    private var page: Binding<Page?> { Binding(get: { Page(rawValue: pageName) ?? .game }, set: { pageName = ($0 ?? .game).rawValue }) }
     private var current: Page { Page(rawValue: pageName) ?? .game }
 
+    // A fixed sidebar beside the page, not a NavigationSplitView: in this AppKit window that puts a toolbar over the page, and its sidebar can be hidden with no way back
     var body: some View {
         VStack(spacing: 0) {
-            NavigationSplitView {
-                List(selection: page) {
-                    ForEach(Page.sidebar, id: \.0) { section in
-                        Section(section.0) {
-                            ForEach(section.1) { p in
-                                Label(p.title, systemImage: p.symbol).tag(Optional(p))
-                                    .badge(pageChanged(p) ? Text("•") : nil)
-                            }
-                        }
-                    }
-                }
-                .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 260)
-            } detail: {
+            HStack(spacing: 0) {
+                Sidebar(current: current, changed: pageChanged) { pageName = $0.rawValue }
+                    .frame(width: 210)
+                    .layoutPriority(1)
+                Divider()
                 Form {
                     Section {
                         HStack(spacing: 12) {
@@ -57,6 +49,8 @@ struct LauncherView: View {
                 }
                 .formStyle(.grouped)
                 .id(current)
+                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)   // a page wider than the window scrolls in its column, never pushes the sidebar out
+                .clipped()
             }
             Divider()
             HStack(spacing: 12) {
@@ -75,7 +69,7 @@ struct LauncherView: View {
             .padding(.horizontal, 16).padding(.vertical, 10)
             .background(Color(nsColor: .windowBackgroundColor))
         }
-        .frame(minWidth: 900, minHeight: 560)
+        .frame(minWidth: 980, minHeight: 560)
         .onChange(of: m.values) { _, _ in m.persist() }
         .alert("Reset every setting?", isPresented: $confirmReset) {
             Button("Reset All", role: .destructive) { m.reset(); input.reset(); text.reset() }
@@ -166,6 +160,51 @@ struct LauncherView: View {
             }
         }
     }
+}
+
+/// The page list: a button per page on the sidebar material. Not a List: its selection style goes stale in this window (the row selected at the start stays bold)
+struct Sidebar: View {
+    let current: Page
+    let changed: (Page) -> Bool
+    let pick: (Page) -> Void
+    @State private var hover: Page?
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 1) {
+                ForEach(Page.sidebar, id: \.0) { section in
+                    Text(section.0).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                        .padding(.leading, 8).padding(.top, section.0 == Page.sidebar[0].0 ? 2 : 12).padding(.bottom, 3)
+                        .accessibilityAddTraits(.isHeader)
+                    ForEach(section.1) { p in row(p) }
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 10)
+        }
+        .scrollIndicators(.never)
+        .background(SidebarMaterial().ignoresSafeArea())
+    }
+    private func row(_ p: Page) -> some View {
+        let on = p == current
+        return Button { pick(p) } label: {
+            HStack(spacing: 8) {
+                Image(systemName: p.symbol).frame(width: 20).foregroundStyle(on ? Color.white : Color.accentColor)
+                Text(p.title).foregroundStyle(on ? Color.white : Color.primary).lineLimit(1)
+                Spacer(minLength: 4)
+                if changed(p) { Circle().fill(on ? Color.white : Color.accentColor).frame(width: 6, height: 6).help("Changed from the defaults") }
+            }
+            .padding(.horizontal, 8).frame(height: 28).frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 7).fill(on ? Color.accentColor : hover == p ? Color.primary.opacity(0.08) : Color.clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 ? p : (hover == p ? nil : hover) }
+        .accessibilityLabel(changed(p) ? "\(p.title), changed" : p.title)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+private struct SidebarMaterial: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView { let v = NSVisualEffectView(); v.material = .sidebar; v.blendingMode = .behindWindow; v.state = .followsWindowActiveState; return v }
+    func updateNSView(_ v: NSVisualEffectView, context: Context) {}
 }
 
 /// Cloud saves: a folder the save is synced through (dm/host/save_sync.h), the one the iPhone app picks in its launcher's Cloud saves section. It is kept in this app's
@@ -340,6 +379,19 @@ struct AboutSection: View {
     }
 }
 
+// Return in a one-line text field (the player name, a profile's name) ends the editing there: a text field otherwise hands Return on to the window's default button, Play,
+// and the game starts from a name being typed. Return anywhere else still plays, and the multi-line box takes it as a new line
+private final class LauncherWindow: NSWindow {
+    override func sendEvent(_ e: NSEvent) {
+        if e.type == .keyDown, e.keyCode == 36 || e.keyCode == 76, e.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty,
+           let t = firstResponder as? NSTextView, t.isFieldEditor {
+            makeFirstResponder(nil)
+            return
+        }
+        super.sendEvent(e)
+    }
+}
+
 private final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model: LauncherModel
     let input = InputStore()
@@ -362,13 +414,15 @@ private final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate 
         edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = edit; menu.addItem(editItem)
         NSApp.mainMenu = menu
-        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        let w = LauncherWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         w.title = name; w.isReleasedWhenClosed = false; w.delegate = self
-        w.contentMinSize = NSSize(width: 900, height: 560)
+        w.contentMinSize = NSSize(width: 980, height: 560)
         w.setFrameAutosaveName("nxnative refreshed settings")
         window = w
         if w.frame.origin == .zero, let screen = w.screen ?? NSScreen.main { w.setFrameTopLeftPoint(NSPoint(x: screen.visibleFrame.midX - w.frame.width / 2, y: screen.visibleFrame.maxY - 40)) }
-        w.contentView = NSHostingView(rootView: LauncherView(m: model, input: input, text: text, done: { [weak self] in self?.finish($0) }))
+        let host = NSHostingView(rootView: LauncherView(m: model, input: input, text: text, done: { [weak self] in self?.finish($0) }))
+        host.sceneBridgingOptions = []   // the window keeps its own title and gets no toolbar from SwiftUI
+        w.contentView = host
         // no activation and no ordering in front of another app's windows: LaunchServices activates an app opened from Finder or the Dock (applicationDidBecomeActive), open -g does not
         if NSApp.isActive { w.makeKeyAndOrderFront(nil) } else { w.orderBack(nil) }
     }

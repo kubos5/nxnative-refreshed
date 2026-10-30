@@ -1,4 +1,4 @@
-// nxnative refreshed's Mac settings window (dm/mac/Launcher.swift and its pages), run by test_launcher_storage.py without showing a window: every page lays out, each page's rows
+// nxnative refreshed's Mac settings window (dm/mac/Launcher.swift and its pages), run by test_launcher_storage.py without showing a window: every page lays out, clicks down the sidebar open every page and the window gets no toolbar, each page's rows
 // reset, the input mapping's defaults are the host's (the input.json the window writes for them is dm/host/tests/input_default.json, which t_input_json.m reads as im_default),
 // stored mappings merge onto the defaults, the quick setups and presets keep two keyboard players apart, and the text settings reach the environment.
 import AppKit
@@ -21,6 +21,32 @@ func checkLauncherLayout(_ model: LauncherModel, defaults: UserDefaults) -> Int 
             expect(view.fittingSize.width > 0, "page \(p.title) lays out")
         }
     }
+
+    // the sidebar in a window: no toolbar (a NavigationSplitView put one over the page in an AppKit window), and clicks down the sidebar open every page in its order
+    // (an Optional tag on a List row matched nothing: a click selected no page). Mouse events through the window, as AppKit hands a click to the view
+    defaults.set(Page.game.rawValue, forKey: "window.page")
+    let window = NSWindow(contentRect: NSRect(x: -4000, y: -4000, width: 1060, height: 720), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    window.contentView = NSHostingView(rootView: LauncherView(m: model, input: input, text: text, done: { _ in }).defaultAppStorage(defaults))
+    window.orderFrontRegardless()
+    RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+    expect(window.toolbar == nil, "the window gets no toolbar")
+    func click(x: CGFloat, top: CGFloat) {   // a point of the content, from its top left
+        let cv = window.contentView!, loc = cv.convert(NSPoint(x: x, y: cv.isFlipped ? top : cv.bounds.height - top), to: nil)
+        for t in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            window.sendEvent(NSEvent.mouseEvent(with: t, location: loc, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                                                context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!)
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.03))
+    }
+    var visited: [Page] = []
+    for top in stride(from: 4.0, to: 680, by: 9) {
+        click(x: 100, top: top)
+        if let p = Page(rawValue: defaults.string(forKey: "window.page") ?? ""), visited.last != p { visited.append(p) }
+    }
+    expect(visited == Page.sidebar.flatMap(\.1), "clicks down the sidebar open every page in its order (\(visited.map(\.rawValue).joined(separator: " ")))")
+    window.close()
+
     expect(Set(model.settings.map(\.page)).isSubset(of: Set(Page.allCases)) && model.settings.allSatisfy { $0.page != .about },
            "every row of the Mac list has a page")
     expect(model.settings.first { $0.env == "DM_RUMBLE" }?.page == .rumble && model.settings.first { $0.env == "DM_FULLSCREEN" }?.page == .display, "rows go to their pages")
