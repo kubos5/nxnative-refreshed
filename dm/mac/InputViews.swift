@@ -28,6 +28,28 @@ final class ControllerMonitor: ObservableObject {
         }
     }
     func controller(_ info: Info) -> GCController? { GCController.controllers().first { ObjectIdentifier($0) == info.id } }
+    // The player each connected controller is expected to get at the start, -1 for none (front_mac.m assign_pads, without the reconnect memory)
+    func owners(_ config: InputConfig) -> [Int] {
+        let cs = controllers, ps = config.players
+        if config.merge { return cs.map { _ in 0 } }
+        var owner = [Int](repeating: -1, count: cs.count)
+        for (p, c) in ps.enumerated() where c.controller.hasPrefix("name:") {
+            let name = String(c.controller.dropFirst(5))
+            if let i = cs.indices.first(where: { owner[$0] < 0 && (cs[$0].name.caseInsensitiveCompare(name) == .orderedSame || cs[$0].category.caseInsensitiveCompare(name) == .orderedSame) }) { owner[i] = p }
+        }
+        for (p, c) in ps.enumerated() where c.controller.hasPrefix("index:") {
+            if let n = Int(c.controller.dropFirst(6)), n >= 1, n <= cs.count, owner[n - 1] < 0 { owner[n - 1] = p }
+        }
+        var taken = Set(owner.filter { $0 >= 0 })
+        for i in cs.indices where owner[i] < 0 {
+            if let p = ps.indices.first(where: { ps[$0].controller == "auto" && !taken.contains($0) }) { owner[i] = p; taken.insert(p) }
+        }
+        return owner
+    }
+    func controllers(of player: Int, _ config: InputConfig) -> [GCController] {
+        let owner = owners(config)
+        return controllers.indices.compactMap { owner[$0] == player ? controller(controllers[$0]) : nil }
+    }
 
     // A short rumble on one controller at a player's strength: two pulses, the low band's then the high band's feel
     private var engines: [ObjectIdentifier: CHHapticEngine] = [:]
@@ -134,22 +156,8 @@ struct PlayersPage: View {
         return n.reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
     }
     static func ordinal(_ n: Int) -> String { ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"][n - 1] }
-    // The player a connected controller is expected to get at the start (front_mac.m assign_pads, without the reconnect memory)
     private func expected(_ index: Int) -> String {
-        let cs = monitor.controllers, ps = input.config.players
-        if input.config.merge { return "→ Player 1" }
-        var owner = [Int](repeating: -1, count: cs.count)
-        for (p, c) in ps.enumerated() where c.controller.hasPrefix("name:") {
-            let name = String(c.controller.dropFirst(5))
-            if let i = cs.indices.first(where: { owner[$0] < 0 && (cs[$0].name.caseInsensitiveCompare(name) == .orderedSame || cs[$0].category.caseInsensitiveCompare(name) == .orderedSame) }) { owner[i] = p }
-        }
-        for (p, c) in ps.enumerated() where c.controller.hasPrefix("index:") {
-            if let n = Int(c.controller.dropFirst(6)), n >= 1, n <= cs.count, owner[n - 1] < 0 { owner[n - 1] = p }
-        }
-        var taken = Set(owner.filter { $0 >= 0 })
-        for i in cs.indices where owner[i] < 0 {
-            if let p = ps.indices.first(where: { ps[$0].controller == "auto" && !taken.contains($0) }) { owner[i] = p; taken.insert(p) }
-        }
+        let owner = monitor.owners(input.config)
         return owner[index] >= 0 ? "→ Player \(owner[index] + 1)" : "not used"
     }
 }
@@ -500,6 +508,15 @@ struct RumblePlayerSection: View {
     @ObservedObject var monitor = ControllerMonitor.shared
     @Binding var player: Int
     let globalGain: Double
+    var globalMin = 0.0
+    private func hd(_ c: ControllerMonitor.Info) -> Int? { monitor.controller(c).flatMap { dm_pad_is_nintendo($0) ? RumblePlayer.device(for: $0) : nil } }
+    // A Nintendo controller plays its two bands in HD Rumble, as the game will (the Test page's patterns); another controller a short pulse through Core Haptics
+    private func tryOn(_ c: ControllerMonitor.Info) {
+        if let d = hd(c), let pattern = RumblePattern.all.first(where: { $0.id == "impacts" }) {
+            RumblePlayer.shared.shape = RumblePlayer.shaping(input.config.players[player], gain: globalGain, min: globalMin)
+            RumblePlayer.shared.play(pattern, on: d)
+        } else { monitor.test(c, player: input.config.players[player], globalGain: globalGain) }
+    }
     var body: some View {
         let def = PlayerConfig.defaults(player)
         Section {
@@ -513,11 +530,12 @@ struct RumblePlayerSection: View {
             if !monitor.controllers.isEmpty {
                 HStack {
                     Text("Try it on")
-                    ForEach(monitor.controllers) { c in Button(c.name) { monitor.test(c, player: input.config.players[player], globalGain: globalGain) }.disabled(!c.haptics) }
+                    ForEach(monitor.controllers) { c in Button(c.name) { tryOn(c) }.disabled(!c.haptics && hd(c) == nil) }
                 }
+                .onAppear { _ = dm_test_switch_count() }   // opens the Nintendo controllers' HID devices before the first try
             }
         } header: { Text("Player rumble") } footer: {
-            Text("The game drives a Switch controller's two HD Rumble motors, each with a low and a high band; a controller with left and right handles (DualSense, Xbox) keeps them apart, a DualShock 4 its strong and weak motor.")
+            Text("The game drives a Switch controller's two HD Rumble motors, each with a low and a high band. A Pro Controller or Joy-Con plays them exactly, as on a Switch; a controller with left and right handles (DualSense, Xbox) keeps the motors apart, a DualShock 4 its strong and weak motor. The Test page has patterns to compare.")
         }
     }
 }

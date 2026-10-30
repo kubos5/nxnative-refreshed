@@ -46,6 +46,7 @@ func checkLauncherLayout(_ model: LauncherModel, defaults: UserDefaults) -> Int 
     }
     expect(visited == Page.sidebar.flatMap(\.1), "clicks down the sidebar open every page in its order (\(visited.map(\.rawValue).joined(separator: " ")))")
     window.close()
+    TestState.shared.stop()   // the Test page's polling, which a page view leaving without its window closing does not stop
 
     expect(Set(model.settings.map(\.page)).isSubset(of: Set(Page.allCases)) && model.settings.allSatisfy { $0.page != .about },
            "every row of the Mac list has a page")
@@ -113,6 +114,35 @@ func checkLauncherLayout(_ model: LauncherModel, defaults: UserDefaults) -> Int 
     x.set("A", .key1, nil); x.set("A", .key1, .key(38))
     var y = PlayerConfig.defaults(0); y.set("Walk", .key2, .key(56)); y.set("Walk", .key2, nil)
     expect(x.binds == PlayerConfig.defaults(0).binds && y == PlayerConfig.defaults(0), "a binding cleared and set again, or set and cleared, leaves the mapping as it was")
+
+    // the Test page: what the keys give the game through the host's own mapping (launcher_bridge.m), the player's rumble settings, the patterns' ranges
+    var keys = [UInt8](repeating: 0, count: 128); let mouse = [UInt8](repeating: 0, count: 12)
+    func eval(_ player: Int32, _ config: InputConfig) -> dm_test_output {
+        _ = dm_test_config(try! JSONSerialization.data(withJSONObject: config.hostJSON()))
+        var o = dm_test_output(); keys.withUnsafeBufferPointer { k in mouse.withUnsafeBufferPointer { m in dm_test_eval(player, k.baseAddress, m.baseAddress, [], &o) } }
+        return o
+    }
+    keys[38] = 1; keys[13] = 1   // J and W
+    var o = eval(0, .defaults)
+    expect(o.buttons & 1 == 1 && o.ly > 30000 && o.lx == 0, "J gives A and W the left stick up, as in the game")
+    expect(eval(1, .defaults).buttons == 0, "a player who does not read the keyboard gets nothing from it")
+    keys = [UInt8](repeating: 0, count: 128); keys[53] = 1   // Escape: the capture hotkey
+    var esc = InputConfig.defaults; esc.players[0].set("B", .key2, .key(53))
+    expect(eval(0, esc).buttons & 2 == 0, "a key taken by a hotkey does not reach the game")
+    var toggle = InputConfig.defaults; toggle.players[0].modes["A"] = "toggle"
+    keys = [UInt8](repeating: 0, count: 128); keys[38] = 1; _ = eval(0, toggle); keys[38] = 0; o = eval(0, toggle)
+    expect(o.buttons & 1 == 1, "a toggle stays on after its key is let go")
+    keys = [UInt8](repeating: 0, count: 128); keys[49] = 1
+    expect(eval(0, .defaults).shake == 1, "Space shakes")
+    var r = PlayerConfig.defaults(0); r.rumbleSwap = true; r.rumbleGain = 0.5
+    let shaped = RumblePlayer.shaping(r, gain: 1, min: 0)(([0.8, 160, 0.4, 320], [0, 160, 0, 320]))
+    expect(shaped.0 == [0, 160, 0, 320] && shaped.1 == [0.4, 160, 0.2, 320], "the Test page's rumble follows the player's swap and strength")
+    r = PlayerConfig.defaults(0); r.rumbleOn = false
+    expect(RumblePlayer.shaping(r, gain: 1, min: 0)(([1, 160, 1, 320], [1, 160, 1, 320])).0 == [0, 160, 0, 320], "and the player's rumble switch")
+    expect(RumblePlayer.shaping(PlayerConfig.defaults(0), gain: 1, min: 0.5)(([0.4, 160, 0.75, 320], [0, 160, 0, 320])).0 == [0, 160, 0.5, 320], "and the cutoff")
+    var inRange = true
+    for p in RumblePattern.all { for t in stride(from: 0.0, to: p.length, by: 0.005) { let (a, b) = p.at(t); for v in [a, b] { inRange = inRange && v.count == 4 && (0...1).contains(v[0]) && (0...1).contains(v[2]) && (40...627).contains(v[1]) && (81...1253).contains(v[3]) } } }
+    expect(inRange, "every rumble pattern stays within HD Rumble's amplitudes and each band's frequencies")
 
     // text settings
     text.values["DM_NICK"] = "Link"; text.values["DM_EXTRA_ENV"] = "DM_SHOW_FPS=1\n# a comment\nnot a line\nDM_METAL_HUD=0\n 1BAD=2"

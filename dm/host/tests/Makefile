@@ -54,6 +54,7 @@ run: $(B)/t_language $(B)/t_motion $(B)/t_heap_size $(B)/t_touch $(B)/t_gesture 
 	TMPDIR="$(abspath $(B))" $(B)/t_hid
 	$(B)/t_haptics
 	$(B)/t_haptics_apple
+	$(B)/t_switch_rumble
 	$(B)/t_nro
 	$(B)/t_symbols
 run: $(B)/t_nro
@@ -153,6 +154,9 @@ $(B)/t_motion: t_motion.c ../motion_fusion.h | $(B)
 run: $(B)/t_input_json
 $(B)/t_input_json: t_input_json.m input_default.json ../input_json.h ../input_map.h ../dm_input.h | $(B)
 	$(CLANG) -O1 -g -fobjc-arc -Wall -Werror -Wno-unused-function -I.. -o $@ t_input_json.m -framework Foundation
+run: $(B)/t_switch_rumble
+$(B)/t_switch_rumble: t_switch_rumble.c ../switch_rumble.h ../hle_haptics.h | $(B)
+	$(CLANG) -O1 -g -Wall -Werror -Wno-unused-function -I.. -o $@ t_switch_rumble.c -lm
 run: $(B)/t_input_map
 $(B)/t_input_map: t_input_map.c ../input_map.h ../dm_input.h | $(B)
 	$(CLANG) -O1 -g -Wall -Werror -Wno-unused-function -o $@ t_input_map.c -lm
@@ -173,7 +177,7 @@ $(B)/t_hid_tsan: t_hid.c ../hle_hid.c ../motion_fusion.h ../hle_haptics.c ../hle
 	$(CLANG) -O1 -g -fsanitize=thread -Wall -Werror -Wno-unused-function -I.. $(GINC) -o $@ t_hid.c ../hle_haptics.c
 $(B)/t_haptics: t_haptics.c ../hle_haptics.c ../hle_haptics.h ../dm_input.h | $(B)
 	$(CLANG) -O1 -g -Wall -Werror -I.. -o $@ t_haptics.c ../hle_haptics.c
-$(B)/t_haptics_apple: t_haptics_apple.m ../haptics_apple.m ../haptics_apple.h ../hle_haptics.c ../hle_haptics.h | $(B)
+$(B)/t_haptics_apple: t_haptics_apple.m ../haptics_apple.m ../haptics_apple.h ../switch_rumble.h ../hle_haptics.c ../hle_haptics.h | $(B)
 	$(CLANG) -O1 -g -fobjc-arc -Wall -Werror -I.. -o $@ t_haptics_apple.m ../hle_haptics.c -framework Cocoa -framework GameController -framework CoreHaptics -framework IOKit
 $(B)/t_time: t_time.c ../hle_time.c ../hle.h ../dm.h $(GAME_H) | $(B)
 	$(CLANG) -O1 -Wall -Werror -Wno-unused-function -I.. $(GINC) -o $@ t_time.c

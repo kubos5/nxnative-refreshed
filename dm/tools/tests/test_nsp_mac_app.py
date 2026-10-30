@@ -120,6 +120,9 @@ class PackReuse(unittest.TestCase):
             'host/romfs_image.h': b'validator', 'host/save_sync.c': b'sync', 'host/save_sync.h': b'sync api', 'tools/romfs.py': b'reader',
             'source/Launcher.swift': b'window', 'ios/Sources/LauncherSettings.swift': b'model', 'ios/Sources/LauncherRow.swift': b'rows',
             'source/RefreshedSettings.swift': b'pages', 'source/InputModel.swift': b'mapping', 'source/InputViews.swift': b'mapping views',
+            'source/TestPage.swift': b'test page', 'source/launcher_bridge.h': b'bridge api', 'source/launcher_bridge.m': b'bridge',
+            'host/input_map.h': b'map', 'host/input_json.h': b'json', 'host/input_pad_apple.h': b'pads', 'host/pad_apple.h': b'labels', 'host/motion_pro.h': b'pro motion',
+            'host/switch_rumble.h': b'hd rumble', 'host/hle_haptics.h': b'vibration', 'host/dm_input.h': b'buttons',
         }
         for n in pack_app.TABLES: files['profile/' + n] = n.encode()
         for n, content in files.items(): (t / n).write_bytes(content)
@@ -199,7 +202,8 @@ class PackReuse(unittest.TestCase):
                  'patched/main.obs.tsv', 'patched/nro.tsv', 'msl/k.metallib', 'msl/k.json', 'msl/inputs.tsv', 'font/nintendo_ext.ttf',
                  'pso/gpu.mtl4a', 'pso/prebuilt.tsv', 'pso/rest_pairs.tsv', 'pso/archive.tsv', 'env.txt', 'icon.jpg', 'source/launcher.c',
                  'source/Launcher.swift', 'ios/Sources/LauncherSettings.swift', 'ios/Sources/LauncherRow.swift',   # the settings window's sources
-                 'source/RefreshedSettings.swift', 'source/InputModel.swift', 'source/InputViews.swift',
+                 'source/RefreshedSettings.swift', 'source/InputModel.swift', 'source/InputViews.swift', 'source/TestPage.swift',
+                 'source/launcher_bridge.h', 'source/launcher_bridge.m', 'host/switch_rumble.h', 'host/input_map.h',   # the Test page's side of the host's code
                  'host/save_sync.c', 'host/save_sync.h']   # the cloud-save code the launcher links (its send after the host exits)
         names += ['profile/' + n for n in pack_app.TABLES]
         for name in names:
@@ -261,8 +265,11 @@ class PackReuse(unittest.TestCase):
         sync = next(c for c in self.commands if Path(c[0]).name == 'clang' and '-o' in c and c[-1].endswith('save_sync.c'))
         self.assertIn(sync[sync.index('-o') + 1], s)   # save_sync.c's object: the launcher sends the save once the host has exited
         self.assertEqual([Path(x).name for x in s if x.endswith('.swift')],
-                         ['Launcher.swift', 'RefreshedSettings.swift', 'InputModel.swift', 'InputViews.swift', 'LauncherSettings.swift', 'LauncherRow.swift'])
+                         ['Launcher.swift', 'RefreshedSettings.swift', 'InputModel.swift', 'InputViews.swift', 'TestPage.swift', 'LauncherSettings.swift', 'LauncherRow.swift'])
         self.assertIn('GameController', s); self.assertIn('CoreHaptics', s)   # the window lists controllers and tries their rumble
+        bridge = next(c for c in self.commands if Path(c[0]).name == 'clang' and '-o' in c and c[-1].endswith('launcher_bridge.m'))
+        self.assertIn('-fobjc-arc', bridge); self.assertIn(bridge[bridge.index('-o') + 1], s)   # the Test page's side of the host's code, Objective-C
+        self.assertEqual(Path(s[s.index('-import-objc-header') + 1]).name, 'launcher_bridge.h'); self.assertIn('IOKit', s)   # its header, Swift's bridging header
 
     def test_selected_file_modes_and_file_additions_and_removals_invalidate(self):
         self.pack()

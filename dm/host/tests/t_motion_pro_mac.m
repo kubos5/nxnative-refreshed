@@ -28,12 +28,19 @@ static uint64_t tick = 1000000000, sample_time;
 uint64_t now_ns(void) { return tick; }
 void dm_motion_set_hid(int p, const float a[3], const float w[3], uint64_t ns) { sent++; player = p; sample_time = ns; assert(a[2] == -1 && w[2] == 0); }
 void dm_motion_clear_hid(int p) { cleared = p; }
+static int imu_commands; static IOHIDDeviceRef imu_device;   // the "enable IMU" reports, to fakes only
+static IOReturn test_set_report(IOHIDDeviceRef device, IOHIDReportType type, CFIndex id, const uint8_t *r, CFIndex len) {
+    assert(type == kIOHIDReportTypeOutput && id == 0x01 && r[0] == 0x01 && r[10] == 0x40 && r[11] == 0x01 && len == 64 && !memcmp(r + 2, "\x00\x01\x40\x40\x00\x01\x40\x40", 8));
+    imu_commands++; imu_device = device; return kIOReturnSuccess;
+}
 #define LOG(...) ((void)0)
 #define IOHIDDeviceGetProperty test_property
 #define IOHIDDeviceRegisterInputReportCallback test_callback
+#define IOHIDDeviceSetReport test_set_report
 #include "../motion_pro_mac.h"
 #undef IOHIDDeviceGetProperty
 #undef IOHIDDeviceRegisterInputReportCallback
+#undef IOHIDDeviceSetReport
 
 static IOHIDDeviceRef hid(TestPro *d) { return (__bridge IOHIDDeviceRef)d; }
 static void found(TestPro *d) { pro_found(NULL, kIOReturnSuccess, NULL, hid(d)); }
@@ -52,6 +59,7 @@ int main(void) { @autoreleasepool {
     pro_found(NULL, kIOReturnError, NULL, hid(a)); assert(!g_pro_devices);
     dm_motion_pro_players(1, 2); found(a); found(a);
     assert(g_pro_devices && !g_pro_devices->next && g_pro_player == 2);
+    assert(imu_commands == 1 && imu_device == hid(a));   // the bound device's IMU is switched on, once
     report(a); assert(sent == 3 && player == 2 && sample_time == tick - 15000000);
     a.callback(a.context, kIOReturnError, hid(a), kIOHIDReportTypeInput, 0x30, a.buffer, 49); assert(sent == 3);
     dm_motion_pro_active(0); assert(cleared == 2); report(a); assert(sent == 3);

@@ -197,6 +197,7 @@ A Mac app ([A Mac app](development.md#a-mac-app)) shows its settings in a window
 | Motion | [Motion](#motion-on-the-mac) for every player, then each player's |
 | Rumble | [Rumble](#rumble-on-the-mac) for every player, then each player's |
 | Hotkeys | [Hotkeys](#hotkeys) |
+| Test | [Buttons and sticks, motion sensors and rumble](#the-test-page), as the game will get them |
 | System | Player name, whether the game is told about focus, controllers in the background, the packed DLC |
 | Saves and Data | [Cloud saves folder](#cloud-saves-folder), the save, log and app data folders, an `env.txt` editor, save backups, input profiles, settings export and import |
 | Advanced | One frame per refresh, memory limit, motion log, extra environment variables |
@@ -219,11 +220,21 @@ The window writes the mapping as `input.json` beside the save and gives it to th
 
 ### Motion on the Mac
 
-`DM_MOTION` turns motion on or off for everyone. A Pro Controller's own reports can also be read directly, since macOS reports no gyro for it. Under it are tilt drift correction, the accelerometer's direction, and the axis mapping (`DM_MOTION_AXES`). Each player chooses where motion comes from: the controller's gyro (as on a Switch), the mouse (when the mouse is that player's gyro), the tilt keys, or nowhere. The player can also set gyro sensitivity, invert pitch, roll or yaw, and adjust the emulated controller's tilt angle, tilt speed, turn speed and how fast it levels again. Every player can shake (the Shake binding). Recenter, as a binding or a hotkey, levels the controllers and removes gyro drift.
+`DM_MOTION` turns motion on or off for everyone. A Pro Controller's own reports can also be read directly, since macOS reports no gyro for it (the host switches the controller's motion sensors on, which macOS leaves off). Under it are tilt drift correction, the accelerometer's direction, and the axis mapping (`DM_MOTION_AXES`). Each player chooses where motion comes from: the controller's gyro (as on a Switch), the mouse (when the mouse is that player's gyro), the tilt keys, or nowhere. The player can also set gyro sensitivity, invert pitch, roll or yaw, and adjust the emulated controller's tilt angle, tilt speed, turn speed and how fast it levels again. Every player can shake (the Shake binding). Recenter, as a binding or a hotkey, levels the controllers and removes gyro drift.
 
 ### Rumble on the Mac
 
-Game rumble, its strength and its cutoff apply to everyone. Each player then has rumble on or off, a strength, the low (160 Hz) and high (320 Hz) bands of HD Rumble separately, a cutoff, and swapped motors. **Try it on** plays a short low-then-high pulse on a connected controller at those settings. The game's two motors stay apart on a controller with left and right handles (DualSense, Xbox) and on a DualShock 4.
+Game rumble, its strength and its cutoff apply to everyone. Each player then has rumble on or off, a strength, the low (160 Hz) and high (320 Hz) bands of HD Rumble separately, a cutoff, and swapped motors. **Try it on** plays a short pattern on a connected controller at those settings.
+
+A Switch Pro Controller or Joy-Con plays HD Rumble as on a Switch: the game's frequency and amplitude for each motor's low and high band go to the controller in its own rumble report, the left motor in the left actuator and the right one in the right (a single Joy-Con plays both). At the default settings the game's values reach the controller unchanged. Other controllers get an approximation: the game's two motors stay apart on a controller with left and right handles (DualSense, Xbox) and on a DualShock 4 ([Nintendo controllers play HD Rumble through their own report](reference/services.md#nintendo-controllers-play-hd-rumble-through-their-own-report)).
+
+### The Test page
+
+**Test** shows what the game will get, through the same code the game runs:
+
+- **Buttons and sticks:** a Switch controller lights up with what the chosen player's keys, mouse buttons (in the box under it) and controllers press, with the sticks where they point. Toggle and Turbo behave as in the game, and a key taken by a hotkey stays dark. While the page is open, keys go to the test (⌘ shortcuts still work).
+- **Motion sensors:** every connected controller with a gyroscope shows its rotation (degrees per second) and acceleration (G) live, with a picture of its tilt. A Pro Controller's sensors are read from its own reports, as in the game.
+- **Rumble:** patterns (each band on its own, each motor on its own, a sweep through both bands' frequencies, impacts, an engine, a heartbeat) and your own frequencies and strengths for each band, on a chosen controller, with or without the player's rumble settings. A Nintendo controller plays them in HD Rumble, exactly as the game sends it, so a pattern can be compared with the same controller on a Switch.
 
 ### Hotkeys
 

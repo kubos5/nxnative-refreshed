@@ -158,6 +158,17 @@ static void send_pair(float left, float right) {
     dm_haptics_send(u, 2); drain();
 }
 static int made;   // engines the test factories made
+// Nintendo HID devices for the HD Rumble route: fakes (CF objects, so the route can retain them), never a real controller
+static sw_hid fakeDevices[4]; static int fakeCount;
+static NSMutableArray<NSData *> *writes; static NSMutableArray<NSValue *> *writeDevices;
+static int fake_list(sw_hid *out, int cap) { int n = fakeCount < cap ? fakeCount : cap; memcpy(out, fakeDevices, sizeof *out * (size_t)n); return n; }
+static IOReturn fake_write(IOHIDDeviceRef dev, const uint8_t *r, size_t n) { [writes addObject:[NSData dataWithBytes:r length:n]]; [writeDevices addObject:[NSValue valueWithPointer:dev]]; return kIOReturnSuccess; }
+static IOHIDDeviceRef fake_device(const char *name) { return (IOHIDDeviceRef)CFStringCreateWithCString(NULL, name, kCFStringEncodingUTF8); }
+static BOOL last_is(dm_vibration l, dm_vibration r) {   // the last report carries these two motors
+    uint8_t want[8]; sr_encode(&l, want); sr_encode(&r, want + 4);
+    const uint8_t *got = writes.lastObject.bytes;
+    return writes.count && got[0] == 0x10 && !memcmp(got + 2, want, 8);
+}
 int main(void) { @autoreleasepool {
     queue = dispatch_queue_create("test.rumble", DISPATCH_QUEUE_SERIAL);
     dispatch_queue_set_specific(queue, &queue, &queue, NULL);
@@ -303,6 +314,58 @@ int main(void) { @autoreleasepool {
     else assert(channels[0].count == 2 && [channels[0][0] isKindOfClass:DmDs4Channel.class] && ds.haptics.attempts == 0);
     dm_haptics_apple_controller(0, nil); drain();
     assert(ds4_crc((const uint8_t *)"123456789", 9) == 0xCBF43926u);   // the report's CRC32 (IEEE, reflected)
+
+    // A Pro Controller plays HD Rumble through its own report, never Core Haptics: each motor's two bands at the game's values, paced (switch_rumble.h)
+    sw_list = fake_list; sw_write = fake_write; writes = [NSMutableArray new]; writeDevices = [NSMutableArray new];
+    IOHIDDeviceRef pro = fake_device("pro"), jleft = fake_device("joy-con L"), jright = fake_device("joy-con R");
+    fakeDevices[0] = (sw_hid){pro, SW_PRO, 1}; fakeCount = 1;
+    TestController *pc = [TestController new]; pc.haptics = [TestHaptics new]; pc.productCategory = @"Switch Pro Controller"; pc.vendorName = @"Pro Controller";
+    dm_haptics_apple_controller(0, (id)pc); drain();
+    assert(channels[0].count == 2 && [channels[0][0] isKindOfClass:DmSwitchChannel.class]);
+    advance(0.5);
+    assert(writes.count == SR_ZEROS && writes[0].length == 49 && ((const uint8_t *)writes[0].bytes)[1] == 0 && ((const uint8_t *)writes[4].bytes)[1] == 4);   // a controller starts still
+    for (NSData *w in writes) assert(sr_silent((const uint8_t *)w.bytes + 2));
+    dm_vibration l = {0.5f, 150, 0.3f, 300}, r = {0.2f, 180, 0.8f, 900}, idle = {0, 160, 0, 320};
+    dm_vibration_update both[] = {{0, 0, l}, {0, 1, r}};
+    dm_haptics_send(both, 2); drain();
+    assert(last_is(l, r) && pc.haptics.attempts == 0);   // the game's values, left in the left actuator: at once, as a change
+    NSUInteger before = writes.count; advance(0.049); assert(writes.count == before); advance(0.012); assert(writes.count == before + 1 && last_is(l, r));   // kept alive every 50 ms
+    // the player's settings: swapped motors, half strength
+    dm_haptics_apple_player(0, (dm_rumble_cfg){1, 0.5f, 1, 1, 0, 1});
+    dm_vibration_update nudge[] = {{0, 0, {0.5f, 151, 0.3f, 300}}}; dm_haptics_send(nudge, 1); drain(); advance(0.04);
+    dm_vibration hl = {0.1f, 180, 0.4f, 900}, hr = {0.25f, 151, 0.15f, 300};
+    assert(last_is(hl, hr));
+    dm_haptics_apple_player(0, (dm_rumble_cfg){1, 1, 1, 1, 0, 0});
+    dm_vibration_update stop[] = {{0, 0, idle}, {0, 1, idle}}; dm_haptics_send(stop, 2); drain(); advance(0.5);
+    assert(sr_silent((const uint8_t *)writes.lastObject.bytes + 2));
+    before = writes.count; advance(1); assert(writes.count == before);   // stopped: no more reports
+    // suspended (the app in the background): silent
+    dm_haptics_send(both, 2); drain(); advance(0.04); assert(last_is(l, r));
+    suspend(DM_HAPTICS_INACTIVE, YES); drain(); advance(0.1); assert(sr_silent((const uint8_t *)writes.lastObject.bytes + 2));
+    suspend(DM_HAPTICS_INACTIVE, NO); drain();
+    // a single right Joy-Con plays both motors, mixed, in its own (right) half; a pair sends to both Joy-Cons
+    fakeDevices[1] = (sw_hid){jright, SW_JOYCON_R, 1}; fakeDevices[2] = (sw_hid){jleft, SW_JOYCON_L, 0}; fakeCount = 3;
+    TestController *jr = [TestController new]; jr.haptics = [TestHaptics new]; jr.productCategory = @"Nintendo Switch Joy-Con (R)";
+    dm_haptics_apple_controller(0, (id)jr); drain(); advance(0.3);
+    dm_haptics_send(both, 2); drain(); advance(0.04);
+    assert(last_is(idle, sr_mix(l, r)) && writeDevices.lastObject.pointerValue == jright);
+    TestController *pair = [TestController new]; pair.haptics = [TestHaptics new]; pair.productCategory = @"Nintendo Switch Joy-Con (L/R)";
+    dm_haptics_apple_controller(0, (id)pair); drain(); advance(0.3);
+    [writes removeAllObjects]; [writeDevices removeAllObjects];
+    dm_haptics_send(both, 2); drain(); advance(0.04);
+    assert(writes.count == 2 && last_is(l, r) && writeDevices[0].pointerValue == jleft && writeDevices[1].pointerValue == jright && writes[0].length == 64 && writes[1].length == 49);
+    // two Pro Controllers: each player its own device
+    fakeDevices[3] = (sw_hid){fake_device("pro 2"), SW_PRO, 1}; fakeCount = 4;
+    TestController *pc2 = [TestController new]; pc2.haptics = [TestHaptics new]; pc2.productCategory = @"Switch Pro Controller";
+    dm_haptics_apple_controller(0, (id)pc); dm_haptics_apple_controller(1, (id)pc2); drain();
+    assert(sw[0].dev[0] == pro && sw[1].dev[0] == fakeDevices[3].dev);
+    // no HID device of the kind: Core Haptics, as before
+    fakeCount = 0;
+    TestController *gone = [TestController new]; gone.haptics = [TestHaptics new]; gone.productCategory = @"Switch Pro Controller";
+    dm_haptics_apple_controller(2, (id)gone); drain();
+    dm_vibration_update p3[] = {{2, 0, {0.6f, 160, 0, 320}}}; dm_haptics_send(p3, 1); drain();
+    assert(gone.haptics.attempts == 1 && ![channels[2].firstObject isKindOfClass:DmSwitchChannel.class]);
+    dm_haptics_apple_controller(0, nil); dm_haptics_apple_controller(1, nil); dm_haptics_apple_controller(2, nil); drain();
     dm_haptics_apple_shutdown();
-    puts("Apple haptics: channels, pulses, idle release, startup handlers, engine replacement, backoff, stale callbacks, plain players, level cutoff and the DualShock 4 route passed");
+    puts("Apple haptics: channels, pulses, idle release, startup handlers, engine replacement, backoff, stale callbacks, plain players, level cutoff, the DualShock 4 route and the HD Rumble route passed");
 } }

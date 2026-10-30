@@ -1,4 +1,4 @@
-// Mac-only passive Pro Controller motion transport. All callbacks and routing run on the main run loop, alongside front_mac.m's player slots.
+// Mac-only Pro Controller motion transport: it reads the controller's reports, and sends it only the command that switches its IMU on (pro_enable_imu). All callbacks and routing run on the main run loop, alongside front_mac.m's player slots.
 // Workaround for macOS's zero-only Pro GCMotion: the OS driver cannot be fixed here, but its underlying reports contain the IMU samples (#296).
 // A separate buffer / decoder belongs to each retained IOHIDDevice. Disconnect or ambiguity clears only the raw source; GameController keeps its buttons and motion.
 #pragma once
@@ -9,13 +9,26 @@
 #include <stdlib.h>
 
 static void (*dm_motion_xform)(int player, float acc[3], float rot[3]);   // motion_apple.h's (a tentative definition: the same variable when both are included)
-typedef struct pro_device { IOHIDDeviceRef hid; uint8_t report[512]; pro_motion motion; struct pro_device *next; } pro_device;
+typedef struct pro_device { IOHIDDeviceRef hid; uint8_t report[512]; pro_motion motion; int imu_on; struct pro_device *next; } pro_device;
 static IOHIDManagerRef g_pro_manager;
 static pro_device *g_pro_devices, *g_pro_bound;
 static int g_pro_player = -1, g_pro_active = 1, g_pro_controllers, g_pro_slot = -1;
 static int g_pro_seen_devices = -1, g_pro_seen_controllers = -1;
 static void (*g_pro_changed)(void);
 
+// nxnative refreshed: macOS 27 leaves the Pro Controller's IMU off, and its 0x30 reports carry zeroes for the samples until the Switch's own "enable IMU" subcommand
+// (0x40, argument 1) arrives, which the controller acknowledges; then they carry the sensors, measured lying flat at +1.03 G on z. So the device bound to a player
+// gets that command once, in a 0x01 report with neutral rumble, as SDL sends it. It changes nothing else of the driver's configuration
+static void pro_enable_imu(pro_device *d) {
+    if (d->imu_on) return;
+    d->imu_on = 1;
+    uint8_t r[64] = {0x01, 0x00, 0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40, 0x40, 0x01};   // packet 0, neutral rumble for both sides, subcommand 0x40 = 1
+    CFTypeRef transport = IOHIDDeviceGetProperty(d->hid, CFSTR(kIOHIDTransportKey));
+    int bluetooth = transport && CFGetTypeID(transport) == CFStringGetTypeID() && CFEqual(transport, CFSTR("Bluetooth"));
+    IOReturn e = IOHIDDeviceSetReport(d->hid, kIOHIDReportTypeOutput, r[0], r, bluetooth ? 49 : 64);
+    if (e != kIOReturnSuccess) LOG("[RED] [hid] Pro Controller raw motion: cannot switch its IMU on (IOReturn 0x%x): its reports may carry no samples", e);
+    else LOG("[hid] Pro Controller raw motion: IMU switched on (subcommand 0x40)");
+}
 static void pro_route(void) {
     int n = 0; for (pro_device *d = g_pro_devices; d; d = d->next) n++;
     int p = pro_motion_player(n, g_pro_controllers, g_pro_slot);
@@ -26,7 +39,7 @@ static void pro_route(void) {
     if (d == g_pro_bound && p == g_pro_player) return;
     if (g_pro_player >= 0) dm_motion_clear_hid(g_pro_player);
     g_pro_bound = d; g_pro_player = p;
-    if (d) { d->motion = (pro_motion){0}; LOG("[hid] Pro Controller raw motion: player %d (passive HID 0x30)", p + 1); }
+    if (d) { d->motion = (pro_motion){0}; LOG("[hid] Pro Controller raw motion: player %d (HID 0x30)", p + 1); pro_enable_imu(d); }
 }
 static void dm_motion_pro_players(int controllers, int slot) { g_pro_controllers = controllers; g_pro_slot = slot; pro_route(); }
 static void dm_motion_pro_active(int active) {
@@ -74,7 +87,7 @@ static void dm_motion_pro_start(void (*changed)(void)) {
     IOHIDManagerRegisterDeviceMatchingCallback(g_pro_manager, pro_found, NULL);
     IOHIDManagerRegisterDeviceRemovalCallback(g_pro_manager, pro_removed, NULL);
     IOHIDManagerScheduleWithRunLoop(g_pro_manager, CFRunLoopGetMain(), kCFRunLoopCommonModes);
-    IOReturn r = IOHIDManagerOpen(g_pro_manager, kIOHIDOptionsTypeNone);   // nonexclusive, no output / feature reports
+    IOReturn r = IOHIDManagerOpen(g_pro_manager, kIOHIDOptionsTypeNone);   // nonexclusive: GameController keeps the device; one output report, pro_enable_imu
     if (r != kIOReturnSuccess) {
         LOG("[RED] Pro Controller raw motion: cannot open HID (0x%x); keeping GameController motion", r);
         IOHIDManagerUnscheduleFromRunLoop(g_pro_manager, CFRunLoopGetMain(), kCFRunLoopCommonModes);

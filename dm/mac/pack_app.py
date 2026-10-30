@@ -80,18 +80,25 @@ def min_os(host):   # the host's deployment target (LC_BUILD_VERSION minos): the
     return m.group(1) if m else '14.0'
 
 
-def swift_sources():   # the settings window (nxnative refreshed: its pages, the input mapping and its views), with the iOS launcher's model and rows
-    return [HERE / 'Launcher.swift', HERE / 'RefreshedSettings.swift', HERE / 'InputModel.swift', HERE / 'InputViews.swift',
+def swift_sources():   # the settings window (nxnative refreshed: its pages, the input mapping and its views, the Test page), with the iOS launcher's model and rows
+    return [HERE / 'Launcher.swift', HERE / 'RefreshedSettings.swift', HERE / 'InputModel.swift', HERE / 'InputViews.swift', HERE / 'TestPage.swift',
             HERE.parent / 'ios/Sources/LauncherSettings.swift', HERE.parent / 'ios/Sources/LauncherRow.swift']
+
+
+def bridge_sources():   # the Test page's side of the host's code (launcher_bridge.h, the Swift bridging header), with the host headers it includes
+    host = HERE.parent / 'host'
+    return [HERE / 'launcher_bridge.h', HERE / 'launcher_bridge.m'] + [host / h for h in ('input_map.h', 'input_json.h', 'input_pad_apple.h', 'pad_apple.h', 'motion_pro.h',
+                                                                                      'switch_rumble.h', 'hle_haptics.h', 'dm_input.h')]
 
 
 def build_launcher(out, minos, clang, swiftc, sdk):   # launcher.c's main and the host's cloud-save code (its send after the host exits), linked by swiftc with the settings window (no Swift main: -parse-as-library)
     with tempfile.TemporaryDirectory(dir=out.parents[3]) as t:
-        objs = [Path(t) / 'launcher.o', Path(t) / 'save_sync.o']
-        for obj, src in zip(objs, (HERE / 'launcher.c', HERE.parent / 'host/save_sync.c')):
-            run([clang, '-isysroot', sdk, '-arch', 'arm64', f'-mmacosx-version-min={minos}', '-O2', '-Wall', '-I', HERE.parent / 'host', '-c', '-o', obj, src])
+        objs = [Path(t) / 'launcher.o', Path(t) / 'save_sync.o', Path(t) / 'launcher_bridge.o']
+        for obj, src in zip(objs, (HERE / 'launcher.c', HERE.parent / 'host/save_sync.c', HERE / 'launcher_bridge.m')):
+            run([clang, '-isysroot', sdk, '-arch', 'arm64', f'-mmacosx-version-min={minos}', '-O2', '-Wall', *(['-fobjc-arc'] if src.suffix == '.m' else []), '-I', HERE.parent / 'host', '-c', '-o', obj, src])
         run([swiftc, '-sdk', sdk, '-target', f'arm64-apple-macos{minos}', '-O', '-swift-version', '5', '-parse-as-library', '-module-cache-path', Path(t) / 'module-cache',
-             '-o', out, *swift_sources(), *objs, '-framework', 'CoreFoundation', '-framework', 'AppKit', '-framework', 'SwiftUI', '-framework', 'GameController', '-framework', 'CoreHaptics'])
+             '-import-objc-header', HERE / 'launcher_bridge.h', '-o', out, *swift_sources(), *objs, '-framework', 'CoreFoundation', '-framework', 'AppKit', '-framework', 'SwiftUI',
+             '-framework', 'GameController', '-framework', 'CoreHaptics', '-framework', 'IOKit'])
 
 
 def make_icns(jpg, out):   # the game's icon (256x256 JPEG) at every size an .icns holds
@@ -223,7 +230,7 @@ def pack(a):
         if not codesign: raise SystemExit('codesign is not available')
         codesign = Path(codesign).resolve()
         minos = min_os(a.host)
-        sources = [Path(__file__).resolve(), HERE / 'launcher.c', HERE.parent / 'host/romfs_image.h', HERE.parent / 'host/save_sync.c', HERE.parent / 'host/save_sync.h', HERE.parent / 'tools/romfs.py'] + swift_sources()
+        sources = [Path(__file__).resolve(), HERE / 'launcher.c', HERE.parent / 'host/romfs_image.h', HERE.parent / 'host/save_sync.c', HERE.parent / 'host/save_sync.h', HERE.parent / 'tools/romfs.py'] + swift_sources() + bridge_sources()
         inputs = {'options': vars(a), 'files': [(str(p), p.stat().st_mode, digest(p), os.readlink(p) if p.is_symlink() else None) for p in files + sources],
                   'trees': [(p, inventory(Path(p))) for p in (a.romfs, a.aoc) if p],
                   'tools': [[str(c), c.stat().st_mode, c.stat().st_size, c.stat().st_mtime_ns, c.stat().st_ctime_ns, run([c, '--version']).strip()] for c in (clang, swiftc)] + [

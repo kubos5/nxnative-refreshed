@@ -1,4 +1,4 @@
-// Core Haptics adapts the game's bands; it cannot reproduce the Switch's exact waveforms.
+// Core Haptics adapts the game's bands; it cannot reproduce the Switch's exact waveforms. A Nintendo controller on the Mac plays them exactly instead (its own HD Rumble report, below).
 // All engines and players belong to one serial queue. Guest threads enqueue ordered snapshots only.
 #import "haptics_apple.h"
 #import <CoreHaptics/CoreHaptics.h>
@@ -9,6 +9,8 @@
 #else
 #import <AppKit/AppKit.h>
 #import <IOKit/hid/IOHIDManager.h>
+#import <GameController/GCSyntheticDeviceKeys.h>
+#include "switch_rumble.h"
 #endif
 #include <math.h>
 #include <pthread.h>
@@ -325,6 +327,234 @@ static BOOL ds4_route(int p, GCController *controller) {
     }
     return NO;
 }
+
+// nxnative refreshed: a Nintendo Switch Pro Controller or Joy-Con plays the game's HD Rumble through its own rumble report, as a Switch drives it (switch_rumble.h): each motor's
+// two bands at the game's frequencies and amplitudes, the left motor in the controller's left actuator and the right one in its right (a single Joy-Con plays both, mixed).
+// Core Haptics could not: the game controllers' haptic server offers no advanced players (macOS 27), so a Pro Controller played one intensity and one sharpness for both motors,
+// in half-second pulses. The player's strength, band shares, cutoff and swap apply as on the other routes; at the defaults the game's values reach the actuators as they are.
+// GameController names no controller's HID device: one device of the kind is that controller; with several, the first free one is taken, and a button pressed on a device
+// moves it to the player whose controller shows that press (sw_seen).
+enum { SW_PRO = 0x2009, SW_JOYCON_L = 0x2006, SW_JOYCON_R = 0x2007 };
+typedef struct { IOHIDDeviceRef dev[2]; int pid[2], bluetooth[2]; uint8_t packet[2]; int single; sr_pace pace; BOOL ticking; } sw_out;   // single: 1 a left Joy-Con alone, 2 a right one
+static sw_out sw[DM_PLAYERS];
+typedef struct { IOHIDDeviceRef dev; int pid, bluetooth; } sw_hid;
+typedef struct sw_dev { IOHIDDeviceRef dev; int pid, bluetooth; uint8_t report[64]; BOOL pressed; struct sw_dev *next; } sw_dev;   // a matched device and its buttons, for sw_seen
+// The manager is on the main thread's run loop, as motion_pro_mac.h's: there a device's input callback can be registered once it is matched (with a dispatch queue IOKit
+// traps on that), and the matching callbacks run apart from the rumble queue, which waits on nothing of the main thread's. The device list is under a lock: the rumble
+// queue reads it. A Nintendo controller routed before its HID device was matched goes to Core Haptics, and moves here when the device comes (sw_found)
+static IOHIDManagerRef swManager;
+static pthread_mutex_t swLock = PTHREAD_MUTEX_INITIALIZER;
+static sw_dev *swDevices;   // under swLock
+static CFMutableArrayRef swListed;   // the rumble queue's last listing: it keeps its devices alive until sw_route has retained the ones it takes
+static void sw_seen(IOHIDDeviceRef dev);
+static void configure(int p, GCController *controller);
+static void sw_input(void *ctx, IOReturn result, void *sender, IOHIDReportType type, uint32_t id, uint8_t *r, CFIndex len) {
+    (void)sender;
+    sw_dev *d = ctx;
+    if (result != kIOReturnSuccess || type != kIOHIDReportTypeInput || len < 3 || !(id == 0x3F || id == 0x30 || id == 0x21 || id == 0x31)) return;
+    // the buttons: bytes 3 to 5 of the full reports (0x30, 0x21 replies, 0x31), bytes 1 and 2 of the simple one (0x3F)
+    BOOL down = id == 0x3F ? (r[1] | r[2]) != 0 : len > 5 && (r[3] | r[4] | r[5]) != 0;
+    if (down && !d->pressed) sw_seen(d->dev);
+    d->pressed = down;
+}
+static int sw_kind(GCController *c, int need[2]);
+static void sw_found(void *ctx, IOReturn result, void *sender, IOHIDDeviceRef dev) {
+    (void)ctx; (void)sender;
+    if (result != kIOReturnSuccess || IOHIDDeviceGetProperty(dev, CFSTR(kIOHIDGCSyntheticDeviceKey)) == kCFBooleanTrue) return;
+    pthread_mutex_lock(&swLock);
+    BOOL known = NO; for (sw_dev *d = swDevices; d; d = d->next) known |= d->dev == dev;
+    sw_dev *d = known ? NULL : calloc(1, sizeof *d);
+    if (d) {
+        d->dev = (IOHIDDeviceRef)CFRetain(dev);
+        d->pid = [(__bridge NSNumber *)IOHIDDeviceGetProperty(dev, CFSTR(kIOHIDProductIDKey)) intValue];
+        d->bluetooth = [(__bridge NSString *)IOHIDDeviceGetProperty(dev, CFSTR(kIOHIDTransportKey)) isEqualToString:@"Bluetooth"];
+        d->next = swDevices; swDevices = d;
+    }
+    pthread_mutex_unlock(&swLock);
+    if (!d) return;
+    IOHIDDeviceRegisterInputReportCallback(dev, d->report, sizeof d->report, sw_input, d);
+    // the players whose Nintendo controller is still on Core Haptics take it now: the lock, then the queue, as dm_haptics_apple_controller
+    pthread_mutex_lock(&routeLock);
+    for (int p = 0; p < DM_PLAYERS; p++) {
+        int need[2]; GCController *c = controllers[p];
+        if (!c || !sw_kind(c, need)) continue;
+        dispatch_sync(queue, ^{
+            if (sw[p].dev[0]) return;   // already through its report
+            dm_haptics_route(p, 0); configure(p, c);
+        });
+    }
+    pthread_mutex_unlock(&routeLock);
+}
+static void sw_drop(int p, BOOL gone);
+static void sw_removed(void *ctx, IOReturn result, void *sender, IOHIDDeviceRef dev) {
+    (void)ctx; (void)result; (void)sender;
+    CFRetain(dev);
+    dispatch_async(queue, ^{   // a player whose controller went away stops writing to it (the controller's own disconnect reroutes it too)
+        for (int p = 0; p < DM_PLAYERS; p++) for (int i = 0; i < 2; i++) if (sw[p].dev[i] == dev) sw_drop(p, YES);
+        CFRelease(dev);
+    });
+    pthread_mutex_lock(&swLock);
+    sw_dev **link = &swDevices;
+    while (*link && (*link)->dev != dev) link = &(*link)->next;
+    sw_dev *d = *link;
+    if (d) *link = d->next;
+    pthread_mutex_unlock(&swLock);
+    if (!d) return;
+    IOHIDDeviceRegisterInputReportCallback(dev, d->report, sizeof d->report, NULL, NULL);   // on the main thread, as the reports: none is in flight
+    CFRelease(d->dev); free(d);
+}
+// Opens the Nintendo HID devices (VID 057E: Pro Controllers and Joy-Cons, not GameController's own synthetic devices), nonexclusive (GameController keeps reading them)
+static void sw_start(void) {
+    swManager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    if (!swManager) return;
+    NSArray *match = @[@{@kIOHIDVendorIDKey: @0x057E, @kIOHIDProductIDKey: @(SW_PRO)}, @{@kIOHIDVendorIDKey: @0x057E, @kIOHIDProductIDKey: @(SW_JOYCON_L)},
+                       @{@kIOHIDVendorIDKey: @0x057E, @kIOHIDProductIDKey: @(SW_JOYCON_R)}];
+    IOHIDManagerSetDeviceMatchingMultiple(swManager, (__bridge CFArrayRef)match);
+    IOHIDManagerRegisterDeviceMatchingCallback(swManager, sw_found, NULL);
+    IOHIDManagerRegisterDeviceRemovalCallback(swManager, sw_removed, NULL);
+    IOHIDManagerScheduleWithRunLoop(swManager, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+    IOReturn e = IOHIDManagerOpen(swManager, kIOHIDOptionsTypeNone);
+    if (e != kIOReturnSuccess) fprintf(stderr, "[RED] haptics: cannot open the Nintendo controllers' HID devices (IOReturn 0x%x): Core Haptics instead\n", e);
+}
+static int sw_list_hid(sw_hid *out, int cap) {   // on the rumble queue: the devices matched so far
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ swListed = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks); dispatch_async(dispatch_get_main_queue(), ^{ sw_start(); }); });
+    CFArrayRemoveAllValues(swListed);
+    int n = 0;
+    pthread_mutex_lock(&swLock);
+    for (sw_dev *d = swDevices; d && n < cap; d = d->next) { CFArrayAppendValue(swListed, d->dev); out[n++] = (sw_hid){d->dev, d->pid, d->bluetooth}; }
+    pthread_mutex_unlock(&swLock);
+    return n;
+}
+static IOReturn sw_write_hid(IOHIDDeviceRef dev, const uint8_t *r, size_t n) { return IOHIDDeviceSetReport(dev, kIOHIDReportTypeOutput, r[0], r, (CFIndex)n); }
+static int (*sw_list)(sw_hid *out, int cap) = sw_list_hid;   // the tests list and write to fakes: a test must never rumble a real controller
+static IOReturn (*sw_write)(IOHIDDeviceRef dev, const uint8_t *r, size_t n) = sw_write_hid;
+static void sw_send(int p, const uint8_t rumble[8]) {
+    uint8_t report[64];
+    for (int i = 0; i < 2; i++) if (sw[p].dev[i]) {
+        size_t n = sr_report(&sw[p].packet[i], rumble, sw[p].bluetooth[i], report);
+        IOReturn e = sw_write(sw[p].dev[i], report, n);
+        if (e != kIOReturnSuccess && (++errors <= 8 || errors % 64 == 0)) fprintf(stderr, "[RED] haptics: player %d HD Rumble report: IOReturn 0x%x\n", p + 1, e);
+    }
+}
+// The report due now, and another look in 10 ms while one is still to come (a change, a rumble to refresh, the last neutral reports)
+static void sw_tick(int p) {
+    sw_out *o = &sw[p];
+    if (!o->dev[0]) return;
+    uint8_t r[8];
+    if (sr_pace_next(&o->pace, (uint64_t)llround(now() * 1e9), r)) sw_send(p, r);
+    if (!o->ticking && sr_pace_busy(&o->pace)) {
+        o->ticking = YES; IOHIDDeviceRef dev = o->dev[0];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_MSEC), queue, ^{
+            if (sw[p].dev[0] != dev) return;   // another route since
+            sw[p].ticking = NO; sw_tick(p);
+        });
+    }
+}
+static void sw_apply(dm_haptic_state s) {
+    sw_out *o = &sw[s.player];
+    if (!o->dev[0]) return;
+    s = player_state(s);
+    float g = player_gain(s.player), min = fmaxf(rumble_min, player_cfg[s.player].min);
+    dm_vibration v[2];
+    for (int m = 0; m < 2; m++) {
+        v[m] = s.motor[m];
+        v[m].amplitude_low = controller_level_min(v[m].amplitude_low * g, min);
+        v[m].amplitude_high = controller_level_min(v[m].amplitude_high * g, min);
+    }
+    if (o->single) {
+        const dm_vibration idle = {0, 160, 0, 320}, mix = sr_mix(v[0], v[1]);
+        v[0] = o->single == 1 ? mix : idle; v[1] = o->single == 2 ? mix : idle;
+    }
+    sr_pace_set(&o->pace, v);
+    sw_tick(s.player);
+}
+static void sw_drop(int p, BOOL gone) {   // silent at once (one report past the pacing does no harm), then the devices go; a device that is gone gets nothing
+    sw_out *o = &sw[p];
+    if (!gone && o->dev[0] && o->pace.have_sent && !sr_silent(o->pace.sent)) { uint8_t r[8]; memcpy(r, sr_neutral, 4); memcpy(r + 4, sr_neutral, 4); sw_send(p, r); }
+    for (int i = 0; i < 2; i++) if (o->dev[i]) CFRelease(o->dev[i]);
+    *o = (sw_out){0};
+}
+@interface DmSwitchChannel : DmRumbleChannel   // one per motor; the route takes both motors' values at once (sw_apply)
+@end
+@implementation DmSwitchChannel
+- (void)apply:(dm_haptic_level)level { (void)level; }
+- (void)stop {
+    sw_out *o = &sw[self.player];
+    if (!o->dev[0]) return;
+    const dm_vibration idle[2] = {{0, 160, 0, 320}, {0, 160, 0, 320}};
+    sr_pace_set(&o->pace, idle); sw_tick(self.player);
+}
+@end
+// The HID devices a controller is made of: a Pro Controller one, a Joy-Con pair its left and right Joy-Con, a single Joy-Con its own
+static int sw_kind(GCController *c, int need[2]) {
+    NSString *k = c.productCategory ?: @"";
+    if ([k isEqualToString:@"Switch Pro Controller"]) { need[0] = SW_PRO; return 1; }
+    if (![k containsString:@"Joy-Con"]) return 0;
+    if ([k containsString:@"(L/R)"]) { need[0] = SW_JOYCON_L; need[1] = SW_JOYCON_R; return 2; }
+    if ([k containsString:@"(L)"]) { need[0] = SW_JOYCON_L; return 1; }
+    if ([k containsString:@"(R)"]) { need[0] = SW_JOYCON_R; return 1; }
+    return 0;
+}
+static BOOL sw_taken(IOHIDDeviceRef dev, int p) {
+    for (int q = 0; q < DM_PLAYERS; q++) if (q != p && (sw[q].dev[0] == dev || sw[q].dev[1] == dev)) return YES;
+    return NO;
+}
+static BOOL sw_route(int p, GCController *controller) {
+    int need[2] = {0, 0}, n = sw_kind(controller, need);
+    if (!n) return NO;
+    sw_hid found[16]; int k = sw_list(found, 16);
+    sw_out o = {0};
+    for (int r = 0; r < n; r++) {
+        for (int i = 0; i < k && !o.dev[r]; i++) if (found[i].pid == need[r] && !sw_taken(found[i].dev, p)) {
+            o.dev[r] = (IOHIDDeviceRef)CFRetain(found[i].dev); o.pid[r] = found[i].pid; o.bluetooth[r] = found[i].bluetooth;
+        }
+        if (!o.dev[r]) {   // its HID device is not there (or not ours to open): Core Haptics, as before
+            for (int i = 0; i < r; i++) CFRelease(o.dev[i]);
+            return NO;
+        }
+    }
+    o.single = n == 2 || need[0] == SW_PRO ? 0 : need[0] == SW_JOYCON_L ? 1 : 2;
+    sw[p] = o;
+    for (int m = 0; m < 2; m++) { DmSwitchChannel *c = [DmSwitchChannel new]; c.player = p; c.motor = m; c.target = @"HD Rumble report"; [channels[p] addObject:c]; }
+    fprintf(stderr, "haptics: player %d controller %s, HD Rumble through its own reports (%s%s)\n", p + 1, controller.vendorName.UTF8String ?: "unknown",
+            o.bluetooth[0] ? "Bluetooth" : "USB", n == 2 ? ", left and right Joy-Con" : "");
+    sw_tick(p);   // neutral reports: a controller starts still
+    return YES;
+}
+// A button went down on a Nintendo HID device: once GameController has it too, the one player whose controller of that kind shows a press owns the device
+static BOOL sw_any_pressed(GCController *c) {
+    GCExtendedGamepad *g = c.extendedGamepad;
+    if (!g) return NO;
+    for (GCControllerButtonInput *b in @[g.buttonA, g.buttonB, g.buttonX, g.buttonY, g.leftShoulder, g.rightShoulder, g.leftTrigger, g.rightTrigger, g.dpad.up, g.dpad.down, g.dpad.left, g.dpad.right, g.buttonMenu])
+        if (b.isPressed) return YES;
+    return g.buttonOptions.isPressed || g.leftThumbstickButton.isPressed || g.rightThumbstickButton.isPressed || g.buttonHome.isPressed;
+}
+static void sw_seen(IOHIDDeviceRef dev) {
+    int pid = [(__bridge NSNumber *)IOHIDDeviceGetProperty(dev, CFSTR(kIOHIDProductIDKey)) intValue];
+    CFRetain(dev);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 60 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+        int owner = -1, count = 0;
+        pthread_mutex_lock(&routeLock);
+        for (int p = 0; p < DM_PLAYERS; p++) {
+            int need[2] = {0, 0}, n = controllers[p] ? sw_kind(controllers[p], need) : 0;
+            if ((need[0] == pid || (n == 2 && need[1] == pid)) && sw_any_pressed(controllers[p])) { owner = p; count++; }
+        }
+        pthread_mutex_unlock(&routeLock);
+        if (count == 1) dispatch_async(queue, ^{
+            sw_out *o = &sw[owner];
+            int role = o->pid[0] == pid ? 0 : o->pid[1] == pid ? 1 : -1;
+            if (role < 0 || o->dev[role] == dev) return;   // not routed through HD Rumble, or already its device
+            for (int q = 0; q < DM_PLAYERS; q++) for (int i = 0; i < 2; i++) if (q != owner && sw[q].dev[i] == dev) {
+                sw[q].dev[i] = o->dev[role]; sw[q].bluetooth[i] = o->bluetooth[role];   // the two players swap devices
+                o->dev[role] = dev; o->bluetooth[role] = [(__bridge NSString *)IOHIDDeviceGetProperty(dev, CFSTR(kIOHIDTransportKey)) isEqualToString:@"Bluetooth"];
+                fprintf(stderr, "haptics: players %d and %d swap Nintendo controllers' rumble: a button pressed on one\n", owner + 1, q + 1);
+                return;
+            }
+        });
+        CFRelease(dev);
+    });
+}
 #endif
 
 static void apply(dm_haptic_state s) {
@@ -333,6 +563,7 @@ static void apply(dm_haptic_state s) {
         NSArray<DmRumbleChannel *> *out = channels[s.player];
 #if !TARGET_OS_IPHONE
         if ([out.firstObject isKindOfClass:DmDs4Channel.class]) { ds4_apply(s); return; }
+        if ([out.firstObject isKindOfClass:DmSwitchChannel.class]) { sw_apply(s); return; }
 #endif
         dm_haptic_state ps = player_state(s); float g = player_gain(s.player);
         for (NSUInteger i = 0; i < out.count; i++) {
@@ -355,7 +586,8 @@ static void configure(int p, GCController *controller) {
     for (DmRumbleChannel *c in channels[p]) [c stop];
     channels[p] = [NSMutableArray new];
 #if !TARGET_OS_IPHONE
-    ds4_release(p);
+    ds4_release(p); sw_drop(p, NO);
+    if (controller && sw_route(p, controller)) { dm_haptics_route(p, 1); return; }   // a Nintendo controller's HD Rumble report first, as a Switch drives it
     if (controller && ds4_route(p, controller)) { dm_haptics_route(p, 1); return; }   // the report first, as SDL drives it
 #endif
     if (controller) {

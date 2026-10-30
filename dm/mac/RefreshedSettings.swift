@@ -6,7 +6,7 @@ import AppKit
 import SwiftUI
 
 enum Page: String, CaseIterable, Identifiable, Hashable {
-    case game, display, audio, players, controls, sticks, motion, rumble, hotkeys, performance, system, saves, advanced, about
+    case game, display, audio, players, controls, sticks, motion, rumble, hotkeys, test, performance, system, saves, advanced, about
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -19,6 +19,7 @@ enum Page: String, CaseIterable, Identifiable, Hashable {
         case .motion: return "Motion"
         case .rumble: return "Rumble"
         case .hotkeys: return "Hotkeys"
+        case .test: return "Test"
         case .performance: return "Performance"
         case .system: return "System"
         case .saves: return "Saves and Data"
@@ -37,6 +38,7 @@ enum Page: String, CaseIterable, Identifiable, Hashable {
         case .motion: return "gyroscope"
         case .rumble: return "waveform.path"
         case .hotkeys: return "command"
+        case .test: return "scope"
         case .performance: return "speedometer"
         case .system: return "gearshape"
         case .saves: return "externaldrive"
@@ -55,6 +57,7 @@ enum Page: String, CaseIterable, Identifiable, Hashable {
         case .motion: return "Gyro and accelerometer, from a controller, the mouse or the keyboard."
         case .rumble: return "The game's HD Rumble on your controllers."
         case .hotkeys: return "Keys and controller buttons for the app itself."
+        case .test: return "Try the controls, the motion sensors and the rumble as the game will get them."
         case .performance: return "How frames reach the screen and how the GPU's work is prepared."
         case .system: return "The console's profile, focus and downloadable content."
         case .saves: return "Cloud saves, backups, folders, and moving settings between games."
@@ -62,7 +65,7 @@ enum Page: String, CaseIterable, Identifiable, Hashable {
         case .about: return "nxnative refreshed and this game."
         }
     }
-    static let sidebar: [(String, [Page])] = [("Game", [.game, .display, .audio, .performance]), ("Input", [.players, .controls, .sticks, .motion, .rumble, .hotkeys]),
+    static let sidebar: [(String, [Page])] = [("Game", [.game, .display, .audio, .performance]), ("Input", [.players, .controls, .sticks, .motion, .rumble, .hotkeys, .test]),
                                               ("App", [.system, .saves, .advanced, .about])]
 }
 

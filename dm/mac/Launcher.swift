@@ -40,7 +40,7 @@ struct LauncherView: View {
                                 Text(current.subtitle).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            if current != .about {
+                            if current != .about && current != .test {
                                 Button("Reset Page") { resetPage(current) }.disabled(!pageChanged(current))
                             }
                         }
@@ -71,6 +71,9 @@ struct LauncherView: View {
         }
         .frame(minWidth: 980, minHeight: 560)
         .onChange(of: m.values) { _, _ in m.persist() }
+        .onAppear { testing(current == .test) }
+        .onDisappear { testing(false) }
+        .onChange(of: pageName) { _, _ in testing(current == .test) }
         .alert("Reset every setting?", isPresented: $confirmReset) {
             Button("Reset All", role: .destructive) { m.reset(); input.reset(); text.reset() }
             Button("Cancel", role: .cancel) {}
@@ -79,6 +82,8 @@ struct LauncherView: View {
         }
     }
 
+    // The Test page reads keys and controllers only while it is open (TestPage.swift)
+    private func testing(_ on: Bool) { let p = $player; if on { TestState.shared.start(input: input, player: { p.wrappedValue }) } else { TestState.shared.stop() } }   // the picker's player as it changes
     private var anyChanged: Bool { m.changed || input.changed || text.changed() || Page.allCases.contains(where: pageChanged) }
     private func pageChanged(_ p: Page) -> Bool {
         if m.changed(on: p) || text.changed(page: p) { return true }
@@ -145,9 +150,12 @@ struct LauncherView: View {
             if m.values["DM_MOTION"] ?? "1" != "0" { MotionPlayerSection(input: input, player: $player) }
         case .rumble:
             EnvSections(page: .rumble, m: m, text: text)
-            if m.values["DM_RUMBLE"] ?? "1" != "0" { RumblePlayerSection(input: input, player: $player, globalGain: Double(m.values["DM_RUMBLE_GAIN"] ?? "1") ?? 1) }
+            if m.values["DM_RUMBLE"] ?? "1" != "0" { RumblePlayerSection(input: input, player: $player, globalGain: Double(m.values["DM_RUMBLE_GAIN"] ?? "1") ?? 1, globalMin: Double(m.values["DM_RUMBLE_MIN"] ?? "0") ?? 0) }
         case .hotkeys:
             HotkeysPage(input: input)
+        case .test:
+            TestPage(input: input, player: $player, rumbleOn: m.values["DM_RUMBLE"] ?? "1" != "0", globalGain: Double(m.values["DM_RUMBLE_GAIN"] ?? "1") ?? 1,
+                     globalMin: Double(m.values["DM_RUMBLE_MIN"] ?? "0") ?? 0)
         case .saves:
             CloudSavesSection()
             DataSections(m: m, input: input, text: text)
@@ -187,7 +195,7 @@ struct Sidebar: View {
         let on = p == current
         return Button { pick(p) } label: {
             HStack(spacing: 8) {
-                Image(systemName: p.symbol).frame(width: 20).foregroundStyle(on ? Color.white : Color.accentColor)
+                Image(systemName: p.symbol).frame(width: 20).foregroundStyle(on ? Color.white : Color.accentColor).accessibilityHidden(true)   // a checkmark symbol reads as "selected"
                 Text(p.title).foregroundStyle(on ? Color.white : Color.primary).lineLimit(1)
                 Spacer(minLength: 4)
                 if changed(p) { Circle().fill(on ? Color.white : Color.accentColor).frame(width: 6, height: 6).help("Changed from the defaults") }
@@ -416,6 +424,7 @@ private final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate 
         NSApp.mainMenu = menu
         let w = LauncherWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         w.title = name; w.isReleasedWhenClosed = false; w.delegate = self
+        w.identifier = NSUserInterfaceItemIdentifier("launcher")   // the Test page takes keys typed in this window only
         w.contentMinSize = NSSize(width: 980, height: 560)
         w.setFrameAutosaveName("nxnative refreshed settings")
         window = w

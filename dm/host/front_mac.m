@@ -26,6 +26,7 @@
 #include "pad_apple.h"
 #include "input_map.h"
 #include "input_json.h"
+#include "input_pad_apple.h"
 #include <signal.h>
 #include <math.h>
 
@@ -149,32 +150,12 @@ static const char g_slot_block = 0;
 static const char *pad_name(GCController *c) { return c.vendorName.UTF8String ?: "?"; }
 static void npad_name(int p, char *out, size_t cap) { uint32_t id = dm_player_npad(p); if (id == 0x20) snprintf(out, cap, "handheld"); else snprintf(out, cap, "%u", id); }
 static int pads_on(void) { return g_input_on || g_bg_input; }
-static void pad_sample(GCController *c, const im_player *cfg, im_inputs *in) {   // ORs one controller into a player's inputs
-    GCExtendedGamepad *g = c.extendedGamepad; if (!g) return;
-    GCControllerButtonInput *south = g.buttonA, *east = g.buttonB, *west = g.buttonX, *north = g.buttonY;
-    if (dm_pad_labelled(c)) { east = g.buttonA; south = g.buttonB; north = g.buttonX; west = g.buttonY; }   // a Nintendo pad names its buttons by their labels
-    GCControllerButtonInput *b[IM_PAD_CODES] = {0};
-    b[IM_P_SOUTH] = south; b[IM_P_EAST] = east; b[IM_P_WEST] = west; b[IM_P_NORTH] = north;
-    b[IM_P_LB] = g.leftShoulder; b[IM_P_RB] = g.rightShoulder; b[IM_P_LT] = g.leftTrigger; b[IM_P_RT] = g.rightTrigger;
-    b[IM_P_LSB] = g.leftThumbstickButton; b[IM_P_RSB] = g.rightThumbstickButton; b[IM_P_MENU] = g.buttonMenu; b[IM_P_OPTIONS] = g.buttonOptions; b[IM_P_HOME] = g.buttonHome;
-    b[IM_P_DLEFT] = g.dpad.left; b[IM_P_DUP] = g.dpad.up; b[IM_P_DRIGHT] = g.dpad.right; b[IM_P_DDOWN] = g.dpad.down;
-    NSDictionary<NSString *, GCControllerButtonInput *> *all = c.physicalInputProfile.buttons;
-    b[IM_P_SHARE] = all[GCInputButtonShare];
-    b[IM_P_PADDLE1] = all[GCInputXboxPaddleOne] ?: all[GCInputLeftPaddle]; b[IM_P_PADDLE2] = all[GCInputXboxPaddleTwo] ?: all[GCInputRightPaddle];
-    b[IM_P_PADDLE3] = all[GCInputXboxPaddleThree]; b[IM_P_PADDLE4] = all[GCInputXboxPaddleFour]; b[IM_P_TOUCHPAD] = all[GCInputDualShockTouchpadButton];
-    for (int i = 0; i < IM_PAD_CODES; i++) if (b[i]) { in->pad[i] = fmaxf(in->pad[i], b[i].value); in->pad_pressed[i] |= b[i].isPressed; }
-    float d[4];
-    im_stick(&cfg->stick[0], g.leftThumbstick.xAxis.value, g.leftThumbstick.yAxis.value, d);
-    for (int i = 0; i < 4; i++) in->pad[IM_P_LS_LEFT + i] = fmaxf(in->pad[IM_P_LS_LEFT + i], d[i]);
-    im_stick(&cfg->stick[1], g.rightThumbstick.xAxis.value, g.rightThumbstick.yAxis.value, d);
-    for (int i = 0; i < 4; i++) in->pad[IM_P_RS_LEFT + i] = fmaxf(in->pad[IM_P_RS_LEFT + i], d[i]);
-}
 static void hotkey(int h);
 static uint8_t g_pad_hot[MAX_PADS][IM_PAD_CODES];   // a controller's elements held for a hotkey (they do not reach the game while held)
 static void pad_hotkeys(int i) {   // a controller element bound to a hotkey runs it on its press
     if (!g_pad_hotkeys) return;
     GCController *c = g_pads[i]; im_inputs in = {0}; static im_player plain; static int ready; if (!ready) { im_player_default(&plain, 1); ready = 1; }
-    pad_sample(c, &plain, &in);
+    im_pad_sample(c, &plain, &in);
     for (int code = 0; code < IM_PAD_CODES; code++) {
         int h = im_hotkey_of(&g_cfg, IM_SRC_PAD, code); if (h < 0) continue;
         int down = im_pad_is_stick(code) ? in.pad[code] >= 0.5f : in.pad_pressed[code];
@@ -189,7 +170,7 @@ static void gather(int p, im_inputs *in) {
     if (g_input_on && c->mouse) { memcpy(in->mouse, g_mbtn, sizeof g_mbtn); in->mouse_stick[0] = g_mstick[p][0]; in->mouse_stick[1] = g_mstick[p][1]; }
     if (!pads_on()) return;
     for (int i = 0; i < g_npads; i++) if (g_pad_player[i] == p) {
-        pad_sample(g_pads[i], c, in);
+        im_pad_sample(g_pads[i], c, in);
         for (int code = 0; code < IM_PAD_CODES; code++) if (g_pad_hot[i][code]) { in->pad[code] = 0; in->pad_pressed[code] = 0; }
     }
 }
