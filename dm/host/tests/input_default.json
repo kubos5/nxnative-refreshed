@@ -1,0 +1,1745 @@
+{
+  "hotkeys" : {
+    "capture" : [
+      {
+        "code" : "53",
+        "src" : "key"
+      }
+    ],
+    "fullscreen" : [
+
+    ],
+    "hud" : [
+
+    ],
+    "mute" : [
+
+    ],
+    "quit" : [
+
+    ],
+    "recenter" : [
+
+    ],
+    "volume_down" : [
+
+    ],
+    "volume_up" : [
+
+    ]
+  },
+  "merge" : false,
+  "players" : [
+    {
+      "auto_center" : 0,
+      "binds" : {
+        "A" : [
+          {
+            "code" : "38",
+            "src" : "key"
+          },
+          {
+            "code" : "east",
+            "src" : "pad"
+          }
+        ],
+        "B" : [
+          {
+            "code" : "40",
+            "src" : "key"
+          },
+          {
+            "code" : "south",
+            "src" : "pad"
+          }
+        ],
+        "DDown" : [
+          {
+            "code" : "125",
+            "src" : "key"
+          },
+          {
+            "code" : "ddown",
+            "src" : "pad"
+          }
+        ],
+        "DLeft" : [
+          {
+            "code" : "123",
+            "src" : "key"
+          },
+          {
+            "code" : "dleft",
+            "src" : "pad"
+          }
+        ],
+        "DRight" : [
+          {
+            "code" : "124",
+            "src" : "key"
+          },
+          {
+            "code" : "dright",
+            "src" : "pad"
+          }
+        ],
+        "DUp" : [
+          {
+            "code" : "126",
+            "src" : "key"
+          },
+          {
+            "code" : "dup",
+            "src" : "pad"
+          }
+        ],
+        "L" : [
+          {
+            "code" : "12",
+            "src" : "key"
+          },
+          {
+            "code" : "lb",
+            "src" : "pad"
+          }
+        ],
+        "LS" : [
+          {
+            "code" : "3",
+            "src" : "key"
+          },
+          {
+            "code" : "lsb",
+            "src" : "pad"
+          }
+        ],
+        "LSDown" : [
+          {
+            "code" : "1",
+            "src" : "key"
+          },
+          {
+            "code" : "ls_down",
+            "src" : "pad"
+          }
+        ],
+        "LSLeft" : [
+          {
+            "code" : "0",
+            "src" : "key"
+          },
+          {
+            "code" : "ls_left",
+            "src" : "pad"
+          }
+        ],
+        "LSRight" : [
+          {
+            "code" : "2",
+            "src" : "key"
+          },
+          {
+            "code" : "ls_right",
+            "src" : "pad"
+          }
+        ],
+        "LSUp" : [
+          {
+            "code" : "13",
+            "src" : "key"
+          },
+          {
+            "code" : "ls_up",
+            "src" : "pad"
+          }
+        ],
+        "Minus" : [
+          {
+            "code" : "48",
+            "src" : "key"
+          },
+          {
+            "code" : "options",
+            "src" : "pad"
+          }
+        ],
+        "Plus" : [
+          {
+            "code" : "36",
+            "src" : "key"
+          },
+          {
+            "code" : "menu",
+            "src" : "pad"
+          }
+        ],
+        "R" : [
+          {
+            "code" : "14",
+            "src" : "key"
+          },
+          {
+            "code" : "rb",
+            "src" : "pad"
+          }
+        ],
+        "RS" : [
+          {
+            "code" : "5",
+            "src" : "key"
+          },
+          {
+            "code" : "rsb",
+            "src" : "pad"
+          }
+        ],
+        "RSDown" : [
+          {
+            "code" : "rs_down",
+            "src" : "pad"
+          }
+        ],
+        "RSLeft" : [
+          {
+            "code" : "rs_left",
+            "src" : "pad"
+          }
+        ],
+        "RSRight" : [
+          {
+            "code" : "rs_right",
+            "src" : "pad"
+          }
+        ],
+        "RSUp" : [
+          {
+            "code" : "rs_up",
+            "src" : "pad"
+          }
+        ],
+        "Shake" : [
+          {
+            "code" : "49",
+            "src" : "key"
+          }
+        ],
+        "X" : [
+          {
+            "code" : "32",
+            "src" : "key"
+          },
+          {
+            "code" : "north",
+            "src" : "pad"
+          }
+        ],
+        "Y" : [
+          {
+            "code" : "34",
+            "src" : "key"
+          },
+          {
+            "code" : "west",
+            "src" : "pad"
+          }
+        ],
+        "ZL" : [
+          {
+            "code" : "6",
+            "src" : "key"
+          },
+          {
+            "code" : "lt",
+            "src" : "pad"
+          }
+        ],
+        "ZR" : [
+          {
+            "code" : "8",
+            "src" : "key"
+          },
+          {
+            "code" : "rt",
+            "src" : "pad"
+          }
+        ]
+      },
+      "controller" : "auto",
+      "gyro_sens" : 1,
+      "inv_pitch" : false,
+      "inv_roll" : false,
+      "inv_yaw" : false,
+      "key_stick" : 1,
+      "keyboard" : true,
+      "modes" : {
+
+      },
+      "motion_source" : "controller",
+      "mouse" : true,
+      "mouse_gyro_sens" : 1,
+      "mouse_inv_x" : false,
+      "mouse_inv_y" : false,
+      "mouse_mode" : "touch",
+      "mouse_sens_x" : 1,
+      "mouse_sens_y" : 1,
+      "mouse_smooth" : 0.5,
+      "rumble" : {
+        "gain" : 1,
+        "high" : 1,
+        "low" : 1,
+        "min" : 0,
+        "on" : true,
+        "swap" : false
+      },
+      "stick_press" : 0.5,
+      "sticks" : [
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        },
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        }
+      ],
+      "tilt_angle" : 35,
+      "tilt_speed" : 240,
+      "trigger_press" : 0,
+      "turbo_hz" : 10,
+      "twist_speed" : 180,
+      "walk" : 0.5
+    },
+    {
+      "auto_center" : 0,
+      "binds" : {
+        "A" : [
+          {
+            "code" : "east",
+            "src" : "pad"
+          }
+        ],
+        "B" : [
+          {
+            "code" : "south",
+            "src" : "pad"
+          }
+        ],
+        "DDown" : [
+          {
+            "code" : "ddown",
+            "src" : "pad"
+          }
+        ],
+        "DLeft" : [
+          {
+            "code" : "dleft",
+            "src" : "pad"
+          }
+        ],
+        "DRight" : [
+          {
+            "code" : "dright",
+            "src" : "pad"
+          }
+        ],
+        "DUp" : [
+          {
+            "code" : "dup",
+            "src" : "pad"
+          }
+        ],
+        "L" : [
+          {
+            "code" : "lb",
+            "src" : "pad"
+          }
+        ],
+        "LS" : [
+          {
+            "code" : "lsb",
+            "src" : "pad"
+          }
+        ],
+        "LSDown" : [
+          {
+            "code" : "ls_down",
+            "src" : "pad"
+          }
+        ],
+        "LSLeft" : [
+          {
+            "code" : "ls_left",
+            "src" : "pad"
+          }
+        ],
+        "LSRight" : [
+          {
+            "code" : "ls_right",
+            "src" : "pad"
+          }
+        ],
+        "LSUp" : [
+          {
+            "code" : "ls_up",
+            "src" : "pad"
+          }
+        ],
+        "Minus" : [
+          {
+            "code" : "options",
+            "src" : "pad"
+          }
+        ],
+        "Plus" : [
+          {
+            "code" : "menu",
+            "src" : "pad"
+          }
+        ],
+        "R" : [
+          {
+            "code" : "rb",
+            "src" : "pad"
+          }
+        ],
+        "RS" : [
+          {
+            "code" : "rsb",
+            "src" : "pad"
+          }
+        ],
+        "RSDown" : [
+          {
+            "code" : "rs_down",
+            "src" : "pad"
+          }
+        ],
+        "RSLeft" : [
+          {
+            "code" : "rs_left",
+            "src" : "pad"
+          }
+        ],
+        "RSRight" : [
+          {
+            "code" : "rs_right",
+            "src" : "pad"
+          }
+        ],
+        "RSUp" : [
+          {
+            "code" : "rs_up",
+            "src" : "pad"
+          }
+        ],
+        "X" : [
+          {
+            "code" : "north",
+            "src" : "pad"
+          }
+        ],
+        "Y" : [
+          {
+            "code" : "west",
+            "src" : "pad"
+          }
+        ],
+        "ZL" : [
+          {
+            "code" : "lt",
+            "src" : "pad"
+          }
+        ],
+        "ZR" : [
+          {
+            "code" : "rt",
+            "src" : "pad"
+          }
+        ]
+      },
+      "controller" : "auto",
+      "gyro_sens" : 1,
+      "inv_pitch" : false,
+      "inv_roll" : false,
+      "inv_yaw" : false,
+      "key_stick" : 1,
+      "keyboard" : false,
+      "modes" : {
+
+      },
+      "motion_source" : "controller",
+      "mouse" : false,
+      "mouse_gyro_sens" : 1,
+      "mouse_inv_x" : false,
+      "mouse_inv_y" : false,
+      "mouse_mode" : "touch",
+      "mouse_sens_x" : 1,
+      "mouse_sens_y" : 1,
+      "mouse_smooth" : 0.5,
+      "rumble" : {
+        "gain" : 1,
+        "high" : 1,
+        "low" : 1,
+        "min" : 0,
+        "on" : true,
+        "swap" : false
+      },
+      "stick_press" : 0.5,
+      "sticks" : [
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        },
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        }
+      ],
+      "tilt_angle" : 35,
+      "tilt_speed" : 240,
+      "trigger_press" : 0,
+      "turbo_hz" : 10,
+      "twist_speed" : 180,
+      "walk" : 0.5
+    },
+    {
+      "auto_center" : 0,
+      "binds" : {
+        "A" : [
+          {
+            "code" : "east",
+            "src" : "pad"
+          }
+        ],
+        "B" : [
+          {
+            "code" : "south",
+            "src" : "pad"
+          }
+        ],
+        "DDown" : [
+          {
+            "code" : "ddown",
+            "src" : "pad"
+          }
+        ],
+        "DLeft" : [
+          {
+            "code" : "dleft",
+            "src" : "pad"
+          }
+        ],
+        "DRight" : [
+          {
+            "code" : "dright",
+            "src" : "pad"
+          }
+        ],
+        "DUp" : [
+          {
+            "code" : "dup",
+            "src" : "pad"
+          }
+        ],
+        "L" : [
+          {
+            "code" : "lb",
+            "src" : "pad"
+          }
+        ],
+        "LS" : [
+          {
+            "code" : "lsb",
+            "src" : "pad"
+          }
+        ],
+        "LSDown" : [
+          {
+            "code" : "ls_down",
+            "src" : "pad"
+          }
+        ],
+        "LSLeft" : [
+          {
+            "code" : "ls_left",
+            "src" : "pad"
+          }
+        ],
+        "LSRight" : [
+          {
+            "code" : "ls_right",
+            "src" : "pad"
+          }
+        ],
+        "LSUp" : [
+          {
+            "code" : "ls_up",
+            "src" : "pad"
+          }
+        ],
+        "Minus" : [
+          {
+            "code" : "options",
+            "src" : "pad"
+          }
+        ],
+        "Plus" : [
+          {
+            "code" : "menu",
+            "src" : "pad"
+          }
+        ],
+        "R" : [
+          {
+            "code" : "rb",
+            "src" : "pad"
+          }
+        ],
+        "RS" : [
+          {
+            "code" : "rsb",
+            "src" : "pad"
+          }
+        ],
+        "RSDown" : [
+          {
+            "code" : "rs_down",
+            "src" : "pad"
+          }
+        ],
+        "RSLeft" : [
+          {
+            "code" : "rs_left",
+            "src" : "pad"
+          }
+        ],
+        "RSRight" : [
+          {
+            "code" : "rs_right",
+            "src" : "pad"
+          }
+        ],
+        "RSUp" : [
+          {
+            "code" : "rs_up",
+            "src" : "pad"
+          }
+        ],
+        "X" : [
+          {
+            "code" : "north",
+            "src" : "pad"
+          }
+        ],
+        "Y" : [
+          {
+            "code" : "west",
+            "src" : "pad"
+          }
+        ],
+        "ZL" : [
+          {
+            "code" : "lt",
+            "src" : "pad"
+          }
+        ],
+        "ZR" : [
+          {
+            "code" : "rt",
+            "src" : "pad"
+          }
+        ]
+      },
+      "controller" : "auto",
+      "gyro_sens" : 1,
+      "inv_pitch" : false,
+      "inv_roll" : false,
+      "inv_yaw" : false,
+      "key_stick" : 1,
+      "keyboard" : false,
+      "modes" : {
+
+      },
+      "motion_source" : "controller",
+      "mouse" : false,
+      "mouse_gyro_sens" : 1,
+      "mouse_inv_x" : false,
+      "mouse_inv_y" : false,
+      "mouse_mode" : "touch",
+      "mouse_sens_x" : 1,
+      "mouse_sens_y" : 1,
+      "mouse_smooth" : 0.5,
+      "rumble" : {
+        "gain" : 1,
+        "high" : 1,
+        "low" : 1,
+        "min" : 0,
+        "on" : true,
+        "swap" : false
+      },
+      "stick_press" : 0.5,
+      "sticks" : [
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        },
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        }
+      ],
+      "tilt_angle" : 35,
+      "tilt_speed" : 240,
+      "trigger_press" : 0,
+      "turbo_hz" : 10,
+      "twist_speed" : 180,
+      "walk" : 0.5
+    },
+    {
+      "auto_center" : 0,
+      "binds" : {
+        "A" : [
+          {
+            "code" : "east",
+            "src" : "pad"
+          }
+        ],
+        "B" : [
+          {
+            "code" : "south",
+            "src" : "pad"
+          }
+        ],
+        "DDown" : [
+          {
+            "code" : "ddown",
+            "src" : "pad"
+          }
+        ],
+        "DLeft" : [
+          {
+            "code" : "dleft",
+            "src" : "pad"
+          }
+        ],
+        "DRight" : [
+          {
+            "code" : "dright",
+            "src" : "pad"
+          }
+        ],
+        "DUp" : [
+          {
+            "code" : "dup",
+            "src" : "pad"
+          }
+        ],
+        "L" : [
+          {
+            "code" : "lb",
+            "src" : "pad"
+          }
+        ],
+        "LS" : [
+          {
+            "code" : "lsb",
+            "src" : "pad"
+          }
+        ],
+        "LSDown" : [
+          {
+            "code" : "ls_down",
+            "src" : "pad"
+          }
+        ],
+        "LSLeft" : [
+          {
+            "code" : "ls_left",
+            "src" : "pad"
+          }
+        ],
+        "LSRight" : [
+          {
+            "code" : "ls_right",
+            "src" : "pad"
+          }
+        ],
+        "LSUp" : [
+          {
+            "code" : "ls_up",
+            "src" : "pad"
+          }
+        ],
+        "Minus" : [
+          {
+            "code" : "options",
+            "src" : "pad"
+          }
+        ],
+        "Plus" : [
+          {
+            "code" : "menu",
+            "src" : "pad"
+          }
+        ],
+        "R" : [
+          {
+            "code" : "rb",
+            "src" : "pad"
+          }
+        ],
+        "RS" : [
+          {
+            "code" : "rsb",
+            "src" : "pad"
+          }
+        ],
+        "RSDown" : [
+          {
+            "code" : "rs_down",
+            "src" : "pad"
+          }
+        ],
+        "RSLeft" : [
+          {
+            "code" : "rs_left",
+            "src" : "pad"
+          }
+        ],
+        "RSRight" : [
+          {
+            "code" : "rs_right",
+            "src" : "pad"
+          }
+        ],
+        "RSUp" : [
+          {
+            "code" : "rs_up",
+            "src" : "pad"
+          }
+        ],
+        "X" : [
+          {
+            "code" : "north",
+            "src" : "pad"
+          }
+        ],
+        "Y" : [
+          {
+            "code" : "west",
+            "src" : "pad"
+          }
+        ],
+        "ZL" : [
+          {
+            "code" : "lt",
+            "src" : "pad"
+          }
+        ],
+        "ZR" : [
+          {
+            "code" : "rt",
+            "src" : "pad"
+          }
+        ]
+      },
+      "controller" : "auto",
+      "gyro_sens" : 1,
+      "inv_pitch" : false,
+      "inv_roll" : false,
+      "inv_yaw" : false,
+      "key_stick" : 1,
+      "keyboard" : false,
+      "modes" : {
+
+      },
+      "motion_source" : "controller",
+      "mouse" : false,
+      "mouse_gyro_sens" : 1,
+      "mouse_inv_x" : false,
+      "mouse_inv_y" : false,
+      "mouse_mode" : "touch",
+      "mouse_sens_x" : 1,
+      "mouse_sens_y" : 1,
+      "mouse_smooth" : 0.5,
+      "rumble" : {
+        "gain" : 1,
+        "high" : 1,
+        "low" : 1,
+        "min" : 0,
+        "on" : true,
+        "swap" : false
+      },
+      "stick_press" : 0.5,
+      "sticks" : [
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        },
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        }
+      ],
+      "tilt_angle" : 35,
+      "tilt_speed" : 240,
+      "trigger_press" : 0,
+      "turbo_hz" : 10,
+      "twist_speed" : 180,
+      "walk" : 0.5
+    },
+    {
+      "auto_center" : 0,
+      "binds" : {
+        "A" : [
+          {
+            "code" : "east",
+            "src" : "pad"
+          }
+        ],
+        "B" : [
+          {
+            "code" : "south",
+            "src" : "pad"
+          }
+        ],
+        "DDown" : [
+          {
+            "code" : "ddown",
+            "src" : "pad"
+          }
+        ],
+        "DLeft" : [
+          {
+            "code" : "dleft",
+            "src" : "pad"
+          }
+        ],
+        "DRight" : [
+          {
+            "code" : "dright",
+            "src" : "pad"
+          }
+        ],
+        "DUp" : [
+          {
+            "code" : "dup",
+            "src" : "pad"
+          }
+        ],
+        "L" : [
+          {
+            "code" : "lb",
+            "src" : "pad"
+          }
+        ],
+        "LS" : [
+          {
+            "code" : "lsb",
+            "src" : "pad"
+          }
+        ],
+        "LSDown" : [
+          {
+            "code" : "ls_down",
+            "src" : "pad"
+          }
+        ],
+        "LSLeft" : [
+          {
+            "code" : "ls_left",
+            "src" : "pad"
+          }
+        ],
+        "LSRight" : [
+          {
+            "code" : "ls_right",
+            "src" : "pad"
+          }
+        ],
+        "LSUp" : [
+          {
+            "code" : "ls_up",
+            "src" : "pad"
+          }
+        ],
+        "Minus" : [
+          {
+            "code" : "options",
+            "src" : "pad"
+          }
+        ],
+        "Plus" : [
+          {
+            "code" : "menu",
+            "src" : "pad"
+          }
+        ],
+        "R" : [
+          {
+            "code" : "rb",
+            "src" : "pad"
+          }
+        ],
+        "RS" : [
+          {
+            "code" : "rsb",
+            "src" : "pad"
+          }
+        ],
+        "RSDown" : [
+          {
+            "code" : "rs_down",
+            "src" : "pad"
+          }
+        ],
+        "RSLeft" : [
+          {
+            "code" : "rs_left",
+            "src" : "pad"
+          }
+        ],
+        "RSRight" : [
+          {
+            "code" : "rs_right",
+            "src" : "pad"
+          }
+        ],
+        "RSUp" : [
+          {
+            "code" : "rs_up",
+            "src" : "pad"
+          }
+        ],
+        "X" : [
+          {
+            "code" : "north",
+            "src" : "pad"
+          }
+        ],
+        "Y" : [
+          {
+            "code" : "west",
+            "src" : "pad"
+          }
+        ],
+        "ZL" : [
+          {
+            "code" : "lt",
+            "src" : "pad"
+          }
+        ],
+        "ZR" : [
+          {
+            "code" : "rt",
+            "src" : "pad"
+          }
+        ]
+      },
+      "controller" : "auto",
+      "gyro_sens" : 1,
+      "inv_pitch" : false,
+      "inv_roll" : false,
+      "inv_yaw" : false,
+      "key_stick" : 1,
+      "keyboard" : false,
+      "modes" : {
+
+      },
+      "motion_source" : "controller",
+      "mouse" : false,
+      "mouse_gyro_sens" : 1,
+      "mouse_inv_x" : false,
+      "mouse_inv_y" : false,
+      "mouse_mode" : "touch",
+      "mouse_sens_x" : 1,
+      "mouse_sens_y" : 1,
+      "mouse_smooth" : 0.5,
+      "rumble" : {
+        "gain" : 1,
+        "high" : 1,
+        "low" : 1,
+        "min" : 0,
+        "on" : true,
+        "swap" : false
+      },
+      "stick_press" : 0.5,
+      "sticks" : [
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        },
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        }
+      ],
+      "tilt_angle" : 35,
+      "tilt_speed" : 240,
+      "trigger_press" : 0,
+      "turbo_hz" : 10,
+      "twist_speed" : 180,
+      "walk" : 0.5
+    },
+    {
+      "auto_center" : 0,
+      "binds" : {
+        "A" : [
+          {
+            "code" : "east",
+            "src" : "pad"
+          }
+        ],
+        "B" : [
+          {
+            "code" : "south",
+            "src" : "pad"
+          }
+        ],
+        "DDown" : [
+          {
+            "code" : "ddown",
+            "src" : "pad"
+          }
+        ],
+        "DLeft" : [
+          {
+            "code" : "dleft",
+            "src" : "pad"
+          }
+        ],
+        "DRight" : [
+          {
+            "code" : "dright",
+            "src" : "pad"
+          }
+        ],
+        "DUp" : [
+          {
+            "code" : "dup",
+            "src" : "pad"
+          }
+        ],
+        "L" : [
+          {
+            "code" : "lb",
+            "src" : "pad"
+          }
+        ],
+        "LS" : [
+          {
+            "code" : "lsb",
+            "src" : "pad"
+          }
+        ],
+        "LSDown" : [
+          {
+            "code" : "ls_down",
+            "src" : "pad"
+          }
+        ],
+        "LSLeft" : [
+          {
+            "code" : "ls_left",
+            "src" : "pad"
+          }
+        ],
+        "LSRight" : [
+          {
+            "code" : "ls_right",
+            "src" : "pad"
+          }
+        ],
+        "LSUp" : [
+          {
+            "code" : "ls_up",
+            "src" : "pad"
+          }
+        ],
+        "Minus" : [
+          {
+            "code" : "options",
+            "src" : "pad"
+          }
+        ],
+        "Plus" : [
+          {
+            "code" : "menu",
+            "src" : "pad"
+          }
+        ],
+        "R" : [
+          {
+            "code" : "rb",
+            "src" : "pad"
+          }
+        ],
+        "RS" : [
+          {
+            "code" : "rsb",
+            "src" : "pad"
+          }
+        ],
+        "RSDown" : [
+          {
+            "code" : "rs_down",
+            "src" : "pad"
+          }
+        ],
+        "RSLeft" : [
+          {
+            "code" : "rs_left",
+            "src" : "pad"
+          }
+        ],
+        "RSRight" : [
+          {
+            "code" : "rs_right",
+            "src" : "pad"
+          }
+        ],
+        "RSUp" : [
+          {
+            "code" : "rs_up",
+            "src" : "pad"
+          }
+        ],
+        "X" : [
+          {
+            "code" : "north",
+            "src" : "pad"
+          }
+        ],
+        "Y" : [
+          {
+            "code" : "west",
+            "src" : "pad"
+          }
+        ],
+        "ZL" : [
+          {
+            "code" : "lt",
+            "src" : "pad"
+          }
+        ],
+        "ZR" : [
+          {
+            "code" : "rt",
+            "src" : "pad"
+          }
+        ]
+      },
+      "controller" : "auto",
+      "gyro_sens" : 1,
+      "inv_pitch" : false,
+      "inv_roll" : false,
+      "inv_yaw" : false,
+      "key_stick" : 1,
+      "keyboard" : false,
+      "modes" : {
+
+      },
+      "motion_source" : "controller",
+      "mouse" : false,
+      "mouse_gyro_sens" : 1,
+      "mouse_inv_x" : false,
+      "mouse_inv_y" : false,
+      "mouse_mode" : "touch",
+      "mouse_sens_x" : 1,
+      "mouse_sens_y" : 1,
+      "mouse_smooth" : 0.5,
+      "rumble" : {
+        "gain" : 1,
+        "high" : 1,
+        "low" : 1,
+        "min" : 0,
+        "on" : true,
+        "swap" : false
+      },
+      "stick_press" : 0.5,
+      "sticks" : [
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        },
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        }
+      ],
+      "tilt_angle" : 35,
+      "tilt_speed" : 240,
+      "trigger_press" : 0,
+      "turbo_hz" : 10,
+      "twist_speed" : 180,
+      "walk" : 0.5
+    },
+    {
+      "auto_center" : 0,
+      "binds" : {
+        "A" : [
+          {
+            "code" : "east",
+            "src" : "pad"
+          }
+        ],
+        "B" : [
+          {
+            "code" : "south",
+            "src" : "pad"
+          }
+        ],
+        "DDown" : [
+          {
+            "code" : "ddown",
+            "src" : "pad"
+          }
+        ],
+        "DLeft" : [
+          {
+            "code" : "dleft",
+            "src" : "pad"
+          }
+        ],
+        "DRight" : [
+          {
+            "code" : "dright",
+            "src" : "pad"
+          }
+        ],
+        "DUp" : [
+          {
+            "code" : "dup",
+            "src" : "pad"
+          }
+        ],
+        "L" : [
+          {
+            "code" : "lb",
+            "src" : "pad"
+          }
+        ],
+        "LS" : [
+          {
+            "code" : "lsb",
+            "src" : "pad"
+          }
+        ],
+        "LSDown" : [
+          {
+            "code" : "ls_down",
+            "src" : "pad"
+          }
+        ],
+        "LSLeft" : [
+          {
+            "code" : "ls_left",
+            "src" : "pad"
+          }
+        ],
+        "LSRight" : [
+          {
+            "code" : "ls_right",
+            "src" : "pad"
+          }
+        ],
+        "LSUp" : [
+          {
+            "code" : "ls_up",
+            "src" : "pad"
+          }
+        ],
+        "Minus" : [
+          {
+            "code" : "options",
+            "src" : "pad"
+          }
+        ],
+        "Plus" : [
+          {
+            "code" : "menu",
+            "src" : "pad"
+          }
+        ],
+        "R" : [
+          {
+            "code" : "rb",
+            "src" : "pad"
+          }
+        ],
+        "RS" : [
+          {
+            "code" : "rsb",
+            "src" : "pad"
+          }
+        ],
+        "RSDown" : [
+          {
+            "code" : "rs_down",
+            "src" : "pad"
+          }
+        ],
+        "RSLeft" : [
+          {
+            "code" : "rs_left",
+            "src" : "pad"
+          }
+        ],
+        "RSRight" : [
+          {
+            "code" : "rs_right",
+            "src" : "pad"
+          }
+        ],
+        "RSUp" : [
+          {
+            "code" : "rs_up",
+            "src" : "pad"
+          }
+        ],
+        "X" : [
+          {
+            "code" : "north",
+            "src" : "pad"
+          }
+        ],
+        "Y" : [
+          {
+            "code" : "west",
+            "src" : "pad"
+          }
+        ],
+        "ZL" : [
+          {
+            "code" : "lt",
+            "src" : "pad"
+          }
+        ],
+        "ZR" : [
+          {
+            "code" : "rt",
+            "src" : "pad"
+          }
+        ]
+      },
+      "controller" : "auto",
+      "gyro_sens" : 1,
+      "inv_pitch" : false,
+      "inv_roll" : false,
+      "inv_yaw" : false,
+      "key_stick" : 1,
+      "keyboard" : false,
+      "modes" : {
+
+      },
+      "motion_source" : "controller",
+      "mouse" : false,
+      "mouse_gyro_sens" : 1,
+      "mouse_inv_x" : false,
+      "mouse_inv_y" : false,
+      "mouse_mode" : "touch",
+      "mouse_sens_x" : 1,
+      "mouse_sens_y" : 1,
+      "mouse_smooth" : 0.5,
+      "rumble" : {
+        "gain" : 1,
+        "high" : 1,
+        "low" : 1,
+        "min" : 0,
+        "on" : true,
+        "swap" : false
+      },
+      "stick_press" : 0.5,
+      "sticks" : [
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        },
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        }
+      ],
+      "tilt_angle" : 35,
+      "tilt_speed" : 240,
+      "trigger_press" : 0,
+      "turbo_hz" : 10,
+      "twist_speed" : 180,
+      "walk" : 0.5
+    },
+    {
+      "auto_center" : 0,
+      "binds" : {
+        "A" : [
+          {
+            "code" : "east",
+            "src" : "pad"
+          }
+        ],
+        "B" : [
+          {
+            "code" : "south",
+            "src" : "pad"
+          }
+        ],
+        "DDown" : [
+          {
+            "code" : "ddown",
+            "src" : "pad"
+          }
+        ],
+        "DLeft" : [
+          {
+            "code" : "dleft",
+            "src" : "pad"
+          }
+        ],
+        "DRight" : [
+          {
+            "code" : "dright",
+            "src" : "pad"
+          }
+        ],
+        "DUp" : [
+          {
+            "code" : "dup",
+            "src" : "pad"
+          }
+        ],
+        "L" : [
+          {
+            "code" : "lb",
+            "src" : "pad"
+          }
+        ],
+        "LS" : [
+          {
+            "code" : "lsb",
+            "src" : "pad"
+          }
+        ],
+        "LSDown" : [
+          {
+            "code" : "ls_down",
+            "src" : "pad"
+          }
+        ],
+        "LSLeft" : [
+          {
+            "code" : "ls_left",
+            "src" : "pad"
+          }
+        ],
+        "LSRight" : [
+          {
+            "code" : "ls_right",
+            "src" : "pad"
+          }
+        ],
+        "LSUp" : [
+          {
+            "code" : "ls_up",
+            "src" : "pad"
+          }
+        ],
+        "Minus" : [
+          {
+            "code" : "options",
+            "src" : "pad"
+          }
+        ],
+        "Plus" : [
+          {
+            "code" : "menu",
+            "src" : "pad"
+          }
+        ],
+        "R" : [
+          {
+            "code" : "rb",
+            "src" : "pad"
+          }
+        ],
+        "RS" : [
+          {
+            "code" : "rsb",
+            "src" : "pad"
+          }
+        ],
+        "RSDown" : [
+          {
+            "code" : "rs_down",
+            "src" : "pad"
+          }
+        ],
+        "RSLeft" : [
+          {
+            "code" : "rs_left",
+            "src" : "pad"
+          }
+        ],
+        "RSRight" : [
+          {
+            "code" : "rs_right",
+            "src" : "pad"
+          }
+        ],
+        "RSUp" : [
+          {
+            "code" : "rs_up",
+            "src" : "pad"
+          }
+        ],
+        "X" : [
+          {
+            "code" : "north",
+            "src" : "pad"
+          }
+        ],
+        "Y" : [
+          {
+            "code" : "west",
+            "src" : "pad"
+          }
+        ],
+        "ZL" : [
+          {
+            "code" : "lt",
+            "src" : "pad"
+          }
+        ],
+        "ZR" : [
+          {
+            "code" : "rt",
+            "src" : "pad"
+          }
+        ]
+      },
+      "controller" : "auto",
+      "gyro_sens" : 1,
+      "inv_pitch" : false,
+      "inv_roll" : false,
+      "inv_yaw" : false,
+      "key_stick" : 1,
+      "keyboard" : false,
+      "modes" : {
+
+      },
+      "motion_source" : "controller",
+      "mouse" : false,
+      "mouse_gyro_sens" : 1,
+      "mouse_inv_x" : false,
+      "mouse_inv_y" : false,
+      "mouse_mode" : "touch",
+      "mouse_sens_x" : 1,
+      "mouse_sens_y" : 1,
+      "mouse_smooth" : 0.5,
+      "rumble" : {
+        "gain" : 1,
+        "high" : 1,
+        "low" : 1,
+        "min" : 0,
+        "on" : true,
+        "swap" : false
+      },
+      "stick_press" : 0.5,
+      "sticks" : [
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        },
+        {
+          "anti" : 0,
+          "curve" : 1,
+          "deadzone" : 0,
+          "inv_x" : false,
+          "inv_y" : false,
+          "outer" : 1,
+          "sens" : 1
+        }
+      ],
+      "tilt_angle" : 35,
+      "tilt_speed" : 240,
+      "trigger_press" : 0,
+      "turbo_hz" : 10,
+      "twist_speed" : 180,
+      "walk" : 0.5
+    }
+  ],
+  "version" : 1
+}

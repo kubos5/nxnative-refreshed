@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include "dm_input.h"
 
+// nxnative refreshed: the Mac front end's per-player gyro sensitivity and axis inversions (input_map.h im_gyro_xform), applied to every sample before it reaches the host; NULL (iOS): as measured
+static void (*dm_motion_xform)(int player, float acc[3], float rot[3]);
 static inline void dm_motion_attach(GCController *c, int player) {
     const char *e = getenv("DM_MOTION"); if (e && !atoi(e)) return;
     GCMotion *mo = c.motion;
@@ -24,6 +26,7 @@ static inline void dm_motion_attach(GCController *c, int player) {
             if (acc[0] == 0 && acc[1] == 0 && acc[2] == 0 && rot[0] == 0 && rot[1] == 0 && rot[2] == 0) return;
             live = 1;
         }
+        if (dm_motion_xform) dm_motion_xform(player, acc, rot);
         dm_motion_set(player, acc, rot);
     };
 }

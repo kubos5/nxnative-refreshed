@@ -29,6 +29,7 @@
 
 extern char **environ;
 int dm_mac_launcher(void);   // Launcher.swift: 1 = Play (the settings are in the environment), 0 = the player quit, 2 = no window (apply the saved choices here)
+void dm_mac_apply_extras(void);   // Launcher.swift (nxnative refreshed): the window's text settings and the input mapping (input.json, DM_INPUT_CONFIG), as the window left them
 static pid_t g_child;
 static char *g_file_keys, *g_launch_keys;   // the variables the env files set, and the settings the launch environment set (DM_ENV_FILE_KEYS, DM_ENV_LAUNCH_KEYS)
 
@@ -189,7 +190,7 @@ int main(int argc, char **argv) {
     if (!window) fprintf(stderr, "launcher: no settings window (DM_LAUNCHER=0 or --no-launcher)\n");
     int shown = window ? dm_mac_launcher() : 2;
     if (!shown) return 0;   // Quit: no game
-    if (shown == 2) saved_choices();
+    if (shown == 2) { saved_choices(); dm_mac_apply_extras(); }
     cloud_saves_folder();
     setenv("DM_ROOT", sup, 0); setenv("DM_ROMFS", romfs, 0); setenv("DM_SAVE", save, 0); setenv("DM_TEMP", temp, 0);
     snprintf(p, sizeof p, "%s/msl", res); setenv("DM_MSL_DIR", p, 0);

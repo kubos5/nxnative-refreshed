@@ -42,6 +42,29 @@ static GCController *controllers[DM_PLAYERS];
 static BOOL phoneSupported;
 #endif
 static float gain = 1;
+static dm_rumble_cfg player_cfg[DM_PLAYERS] = {[0 ... DM_PLAYERS - 1] = {1, 1, 1, 1, 0, 0}};   // dm_haptics_apple_player; read on the rumble queue
+void dm_haptics_apple_player(int p, dm_rumble_cfg cfg) {
+    if (p < 0 || p >= DM_PLAYERS) return;
+    if (!isfinite(cfg.gain) || cfg.gain < 0) cfg.gain = 1;
+    if (!isfinite(cfg.low) || cfg.low < 0) cfg.low = 1;
+    if (!isfinite(cfg.high) || cfg.high < 0) cfg.high = 1;
+    if (!isfinite(cfg.min) || cfg.min < 0) cfg.min = 0;
+    if (queue) dispatch_sync(queue, ^{ player_cfg[p] = cfg; }); else player_cfg[p] = cfg;
+    if (cfg.on != 1 || cfg.gain != 1 || cfg.low != 1 || cfg.high != 1 || cfg.min != 0 || cfg.swap)
+        fprintf(stderr, "haptics: player %d rumble %s, strength %.0f %%, low band %.0f %%, high band %.0f %%, cutoff %.0f %%%s\n", p + 1, cfg.on ? "on" : "off",
+                cfg.gain * 100, cfg.low * 100, cfg.high * 100, cfg.min * 100, cfg.swap ? ", motors swapped" : "");
+}
+// The game's two motors as this player wants them: off, swapped, each band scaled (the result is clamped to the motors' range by dm_haptics_level)
+static dm_haptic_state player_state(dm_haptic_state s) {
+    dm_rumble_cfg c = player_cfg[s.player];
+    if (c.swap) { dm_vibration t = s.motor[0]; s.motor[0] = s.motor[1]; s.motor[1] = t; }
+    for (int m = 0; m < 2; m++) {
+        s.motor[m].amplitude_low = c.on ? fminf(1, s.motor[m].amplitude_low * c.low) : 0;
+        s.motor[m].amplitude_high = c.on ? fminf(1, s.motor[m].amplitude_high * c.high) : 0;
+    }
+    return s;
+}
+static float player_gain(int p) { return gain * player_cfg[p].gain; }
 static pthread_mutex_t routeLock = PTHREAD_MUTEX_INITIALIZER;
 static unsigned errors;
 static NSTimeInterval now(void) {
@@ -69,10 +92,12 @@ static CHHapticPattern *simple_pattern(dm_haptic_level level, NSError **error) {
 // low band at 0.1-0.4 all race long: 0.45 leaves crashes and drifts). The mapping stays linear by default: the opposite need, low levels that
 // rotating motors do not render at all (Breath of the Wild's charged attack on an Xbox controller), is open (docs/reference/services.md)
 static float rumble_min;
-static float controller_level(float x) {
+static float controller_level_min(float x, float min) {
     x = isfinite(x) ? fmaxf(0, fminf(1, x)) : 0;
-    return x <= rumble_min ? 0 : (x - rumble_min) / (1 - rumble_min);
+    min = fminf(0.9f, fmaxf(0, min));
+    return x <= min ? 0 : (x - min) / (1 - min);
 }
+static float controller_level(float x) { return controller_level_min(x, rumble_min); }
 static void report(NSError *e, NSString *target, const char *stage) {
     if (++errors <= 8 || errors % 64 == 0) {
         fprintf(stderr, "[RED] haptics: %s %s: %s (%s %ld)\n", target.UTF8String, stage,
@@ -159,7 +184,7 @@ static void report(NSError *e, NSString *target, const char *stage) {
     return YES;
 }
 - (void)apply:(dm_haptic_level)level {
-    if ([self.target hasPrefix:@"controller"]) level.intensity = controller_level(level.intensity);
+    if ([self.target hasPrefix:@"controller"]) level.intensity = controller_level_min(level.intensity, fmaxf(rumble_min, player_cfg[self.player].min));
     uint64_t silence = ++self.silenceGeneration;
     NSError *error = nil;
     self.level = level;
@@ -252,9 +277,11 @@ static void ds4_send(int p) {
 static void ds4_apply(dm_haptic_state s) {
     ds4_out *o = &ds4[s.player];
     if (!o->dev) return;
+    s = player_state(s);
     const dm_vibration *l = &s.motor[0], *r = &s.motor[1];
-    o->motor[0] = (uint8_t)lrintf(controller_level((0.85f * l->amplitude_low + 0.15f * r->amplitude_low) * gain) * 255);
-    o->motor[1] = (uint8_t)lrintf(controller_level((0.15f * l->amplitude_high + 0.85f * r->amplitude_high) * gain) * 255);
+    float g = player_gain(s.player), min = fmaxf(rumble_min, player_cfg[s.player].min);
+    o->motor[0] = (uint8_t)lrintf(controller_level_min((0.85f * l->amplitude_low + 0.15f * r->amplitude_low) * g, min) * 255);
+    o->motor[1] = (uint8_t)lrintf(controller_level_min((0.15f * l->amplitude_high + 0.85f * r->amplitude_high) * g, min) * 255);
     if (o->motor[0] == o->sent[0] && o->motor[1] == o->sent[1]) return;
     ds4_send(s.player);
 }
@@ -307,10 +334,11 @@ static void apply(dm_haptic_state s) {
 #if !TARGET_OS_IPHONE
         if ([out.firstObject isKindOfClass:DmDs4Channel.class]) { ds4_apply(s); return; }
 #endif
+        dm_haptic_state ps = player_state(s); float g = player_gain(s.player);
         for (NSUInteger i = 0; i < out.count; i++) {
             if (s.epoch != dm_haptics_epoch(s.player)) break;   // a failed channel may replace this route
             int m = out[i].motor;
-            dm_haptic_level level = m >= 0 ? dm_haptics_level(&s.motor[m], 1, gain) : dm_haptics_level(s.motor, 2, gain);
+            dm_haptic_level level = m >= 0 ? dm_haptics_level(&ps.motor[m], 1, g) : dm_haptics_level(ps.motor, 2, g);
             [out[i] apply:level];
         }
     } });

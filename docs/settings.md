@@ -6,7 +6,7 @@ The screen before the game starts shows the settings the game supports. A settin
 - [Game](#game): [Frame rate](#frame-rate), [Render scale](#render-scale), [Console mode](#console-mode), [Upscaling](#upscaling), [Game language](#game-language), [Frame-rate counter](#frame-rate-counter)
 - [Controls](#controls): [Touch feedback](#touch-feedback), [Game rumble](#game-rumble), [Rumble strength](#rumble-strength), [Rumble cutoff](#rumble-cutoff)
 - [Performance](#performance): [Frame buffering](#frame-buffering), [Metal 4 pipelines](#metal-4-pipelines), [Pipeline prebuild](#pipeline-prebuild), [Encode thread](#encode-thread), [Hold frames when late](#hold-frames-when-late), [Performance HUD](#performance-hud), [Reset to tested defaults](#reset-to-tested-defaults)
-- [The Mac settings window](#the-mac-settings-window): [Display mode](#display-mode)
+- [The Mac settings window](#the-mac-settings-window): [Players and controls](#players-and-controls), [Motion on the Mac](#motion-on-the-mac), [Rumble on the Mac](#rumble-on-the-mac), [Hotkeys](#hotkeys), [Display mode](#display-mode)
 - [TV](#tv)
 - [Settings in a file](#settings-in-a-file)
 
@@ -183,11 +183,51 @@ Sets every setting back to the game's tested default; **Play** then forgets your
 
 ## The Mac settings window
 
-A Mac app ([A Mac app](development.md#a-mac-app)) shows its settings in a window before the game starts. They are the same settings as on the iPhone, with the same defaults. The window shows the most used ones first: **Frame rate**, **Render scale**, **Console mode**, **Game language**, **Display mode** and **Game rumble**, when the game has them. **Render scale** shows the picture's size in pixels beside the percentage for the chosen **Console mode**, when the game's profile has it (Breath of the Wild: 1600 × 900 docked, 1280 × 720 handheld at 100 %). The others are under **Advanced settings**, in the usual sections, with **Reset to tested defaults**. The window remembers whether Advanced settings is open. **Frame-rate counter** and **Touch feedback** are only on the iPhone.
+A Mac app ([A Mac app](development.md#a-mac-app)) shows its settings in a window before the game starts. In nxnative refreshed, that window has a sidebar of pages, each split into sub-sections:
 
-Click **Play** (or press Return) to start the game. **Quit**, ⌘Q or closing the window ends the app without the game. The app remembers your choices for that game, and a game started without the window, from a front end or with the window turned off, uses them too ([Saved choices](frontends.md#saved-choices)). A setting fixed by an `env.txt` or by the program that started the app is shown greyed out.
+| Page | What it holds |
+|---|---|
+| Game | Frame rate, render scale, upscaling, console mode, game language |
+| Display | [Display mode](#display-mode), fullscreen style (macOS full screen, or borderless and instant), window size (presets, fit the screen, or where it was last), 16:9 resizing, keep in front, the pointer (always, hidden when idle, never), refresh-rate matching, performance HUD |
+| Audio | Volume (0 to 200 %), mute while in the background |
+| Performance | The game's tested pipeline and pacing settings, plus display link, frames queued, frame order, the 30 fps hold when hot, hybrid pipelines, prebuild and prepare threads (NVN games) |
+| Players | [Who plays with what](#players-and-controls) |
+| Controls | [The mapping](#players-and-controls), per player |
+| Sticks and Mouse | Per player: each stick's dead zone, outer edge, response curve (with a graph), sensitivity, minimum output and inversion; trigger and stick press points; a key's stick deflection, Walk, turbo rate; the mouse as touchscreen, right or left stick, or gyro, with sensitivity, smoothing and inversion |
+| Motion | [Motion](#motion-on-the-mac) for every player, then each player's |
+| Rumble | [Rumble](#rumble-on-the-mac) for every player, then each player's |
+| Hotkeys | [Hotkeys](#hotkeys) |
+| System | Player name, whether the game is told about focus, controllers in the background, the packed DLC |
+| Saves and Data | [Cloud saves folder](#cloud-saves-folder), the save, log and app data folders, an `env.txt` editor, save backups, input profiles, settings export and import |
+| Advanced | One frame per refresh, memory limit, motion log, extra environment variables |
+
+Every option has a reset button beside it (it is greyed out while the option is at its default, and the line under the option names the default once it has changed). Every page has **Reset Page**, and **Reset All…** at the bottom brings back every default after asking. A dot in the sidebar marks a page with changes. Changes are kept as you make them, so **Quit** keeps them too. A setting fixed by an `env.txt` or by the program that started the app is shown greyed out.
+
+Click **Play** (or press Return) to start the game. **Quit**, ⌘Q or closing the window ends the app without the game. The app remembers your choices for that game, and a game started without the window, from a front end or with the window turned off, uses them too ([Saved choices](frontends.md#saved-choices)).
 
 Turn off **Show this window at launch** to start the game at once with your choices. Hold Option while the app opens to see the window again. `DM_LAUNCHER=0` in the app's `env.txt` (`~/Library/Application Support/nxnative/<title ID>/env.txt`) or in its environment, or opening it with `open <app> --args --no-launcher`, also skips the window; your choices still apply. `DM_SAVED_CHOICES=0` starts with the tested defaults instead.
+
+### Players and controls
+
+**Players** decides which devices each of the eight players uses: the keyboard, the mouse, and a controller. The controller can be **Automatic** (the next free one), **None**, **the n-th controller connected**, or a **controller by name**. Controllers are matched by name first, then by connection order, then in the automatic order, where a controller that reconnects gets its player back. **Every controller plays Player 1** merges them all. The quick setups cover the usual cases: each controller is a player with the keyboard on Player 1 (the default, as in nxnative), the keyboard on its own as Player 1, everything on Player 1, and two players on one keyboard. The page lists the connected controllers, with motion, rumble and battery, the player each will get, and a **Rumble** button to tell them apart.
+
+**Controls** maps every Switch input for the chosen player: A, B, X, Y, L, R, ZL, ZR, +, −, both stick presses, the D-pad, each direction of both sticks, Walk (the left stick at a set deflection while held), Shake, Tilt forward/back/left/right, Turn left/right, and Recenter motion. Each input takes two keys, a mouse button or wheel direction, and two controller elements. Controller elements are named by position (on a Nintendo controller, East is A) and include the paddles and the touchpad. Click a cell and press the key, button or stick, or pick one from the list. Any key works, the modifier keys on their own included. A conflict (one key on two inputs, or taken by a hotkey) is marked. Each input can be **Hold**, **Toggle** or **Turbo**. **Presets** applies nxnative's defaults, Switch or Xbox face-button layouts, a keyboard-and-mouse layout with mouse camera, either half of the keyboard, or clears the keyboard or the controller. **Copy from** takes another player's mapping.
+
+Input profiles (**Saves and Data**) keep every player's controls, devices, sticks, mouse, motion, rumble and hotkeys in `~/Library/Application Support/nxnative/profiles/`, where every game can load them.
+
+The window writes the mapping as `input.json` beside the save and gives it to the game as `DM_INPUT_CONFIG`. Without one, the game uses nxnative's controls (WASD, the arrow keys, J K U I, Q E Z C, F G, Return, Tab, Space; the mouse as the touchscreen; the controller as on the iPhone).
+
+### Motion on the Mac
+
+`DM_MOTION` turns motion on or off for everyone. A Pro Controller's own reports can also be read directly, since macOS reports no gyro for it. Under it are tilt drift correction, the accelerometer's direction, and the axis mapping (`DM_MOTION_AXES`). Each player chooses where motion comes from: the controller's gyro (as on a Switch), the mouse (when the mouse is that player's gyro), the tilt keys, or nowhere. The player can also set gyro sensitivity, invert pitch, roll or yaw, and adjust the emulated controller's tilt angle, tilt speed, turn speed and how fast it levels again. Every player can shake (the Shake binding). Recenter, as a binding or a hotkey, levels the controllers and removes gyro drift.
+
+### Rumble on the Mac
+
+Game rumble, its strength and its cutoff apply to everyone. Each player then has rumble on or off, a strength, the low (160 Hz) and high (320 Hz) bands of HD Rumble separately, a cutoff, and swapped motors. **Try it on** plays a short low-then-high pulse on a connected controller at those settings. The game's two motors stay apart on a controller with left and right handles (DualSense, Xbox) and on a DualShock 4.
+
+### Hotkeys
+
+Actions for the app itself, each on two keys and a controller element: toggle fullscreen (in the chosen style), capture or release the mouse (Esc by default; a click in the game also captures it while a player's mouse is a stick or a gyro), mute, volume up and down, recenter every player's motion, the performance HUD, and quit. A hotkey's key does not reach the game. A short message over the game confirms volume, mute, recentering and capture.
 
 ### Display mode
 
@@ -222,6 +262,22 @@ A line like `DM_PRESENT_SNAP=0` in `Documents/env.txt` (in the Files app, under 
 | Console mode | `DM_OPMODE` | `1` docked, `0` handheld |
 | Game language | `DM_LANG` | a language code, such as `ja` |
 | Display mode (Mac) | `DM_FULLSCREEN` | `1` fullscreen, `0` a window |
+| Fullscreen style (Mac) | `DM_FULLSCREEN_STYLE` | `space`, `borderless` |
+| Window size (Mac) | `DM_WINDOW_SIZE` | `1280x720` (any `WxH`), `fit`, `remember` |
+| Keep 16:9 when resizing (Mac) | `DM_WINDOW_ASPECT` | `1`, `0` |
+| Keep the window in front (Mac) | `DM_WINDOW_TOP` | `1`, `0` |
+| Pointer over the game (Mac) | `DM_CURSOR` | `show`, `auto`, `hide` |
+| Refresh-rate matching (Mac) | `DM_SCREEN_MATCH` | `1`, `0` |
+| Volume (Mac) | `DM_VOLUME` | `0` to `2` |
+| Mute in the background (Mac) | `DM_BG_MUTE` | `1`, `0` |
+| Controllers in the background (Mac) | `DM_BG_INPUT` | `1`, `0` |
+| Tell the game about focus (Mac) | `DM_FOCUS_EVENTS` | `1`, `0` |
+| Use the packed DLC (Mac) | `DM_AOC_OWNED` | `1`, `0` |
+| Player name (Mac) | `DM_NICK` | text, at most 32 bytes |
+| Motion controls (Mac) | `DM_MOTION` | `1`, `0` |
+| Pro Controller motion (Mac) | `DM_MOTION_HID` | `1`, `0` |
+| Tilt drift correction (Mac) | `DM_MOTION_GAIN` | `0` to `2` |
+| Input mapping (Mac) | `DM_INPUT_CONFIG` | the path of an `input.json` |
 | Cloud saves folder (Mac) | `DM_SAVE_SYNC` | a folder; `icloud`: iCloud Drive › nxnative Saves; `0`: off |
 | Frame-rate counter | `DM_SHOW_FPS` | `1`, `0` |
 | Touch feedback | `DM_TOUCH_HAPTICS` | `1`, `0` |

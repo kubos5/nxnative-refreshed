@@ -8,6 +8,7 @@
 #include "dm_input.h"
 #include <stdlib.h>
 
+static void (*dm_motion_xform)(int player, float acc[3], float rot[3]);   // motion_apple.h's (a tentative definition: the same variable when both are included)
 typedef struct pro_device { IOHIDDeviceRef hid; uint8_t report[512]; pro_motion motion; struct pro_device *next; } pro_device;
 static IOHIDManagerRef g_pro_manager;
 static pro_device *g_pro_devices, *g_pro_bound;
@@ -39,7 +40,10 @@ static void pro_report(void *ctx, IOReturn result, void *sender, IOHIDReportType
     if (result != kIOReturnSuccess || type != kIOHIDReportTypeInput || report_id != 0x30 || len < 0 || !g_pro_active || d != g_pro_bound) return;
     pro_motion_sample samples[3];
     int n = pro_motion_decode(&d->motion, r, (size_t)len, now_ns(), samples);
-    for (int i = 0; i < n; i++) dm_motion_set_hid(g_pro_player, samples[i].acc, samples[i].rot, samples[i].ns);
+    for (int i = 0; i < n; i++) {
+        if (dm_motion_xform) dm_motion_xform(g_pro_player, samples[i].acc, samples[i].rot);
+        dm_motion_set_hid(g_pro_player, samples[i].acc, samples[i].rot, samples[i].ns);
+    }
 }
 static void pro_found(void *ctx, IOReturn result, void *sender, IOHIDDeviceRef hid) {
     (void)ctx; (void)sender;

@@ -30,6 +30,10 @@ void dm_motion_clear(int player);   // clears GameController motion; another fre
 // Kept separate from GameController and the phone; used while GameController supplies no fresh motion for that player. DM_MOTION_AXES / ACC_SIGN apply only to GameController.
 void dm_motion_set_hid(int player, const float acc[3], const float rot[3], uint64_t sample_ns);
 void dm_motion_clear_hid(int player);
+// nxnative refreshed: emulated motion (keyboard tilt, the mouse as a gyro; front_mac.m with input_map.h), already in the Switch frame (G, rad/s); kept apart from the controller's own
+void dm_motion_set_emulated(int player, const float acc[3], const float rot[3]);
+void dm_motion_clear_emulated(int player);
+void dm_motion_recenter(int player);   // every motion source of the player starts again level and facing forward
 uint32_t dm_player_npad(int player);  // the npad id the game reads player p + 1 on: Handheld (0x20) or No1 (0) for player 1, No n (id n - 1) for player n
 
 // Optional diagnostic DM_HID_RECEIPT_LOG=<writable JSONL path>: received samples of real GetNpadState returns.

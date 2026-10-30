@@ -141,6 +141,25 @@ static void pull_device(aout *a, uint8_t *dst, uint64_t bytes) {
     }
 }
 
+// Output volume and mute (hle.h dm_audio_volume_set / dm_audio_mute): applied to the device buffer after the mix, so the game's own volume and the pacing are untouched
+static _Atomic uint32_t g_volume_milli = 1000, g_mute_reasons; static _Atomic int g_volume_read;
+static void volume_env(void) {
+    if (atomic_exchange(&g_volume_read, 1)) return;
+    const char *e = getenv("DM_VOLUME");
+    if (e && *e) { double v = atof(e); if (v >= 0 && v <= 2) { atomic_store(&g_volume_milli, (uint32_t)(v * 1000 + 0.5)); LOG("audio: volume %.0f %% (DM_VOLUME)", v * 100); } }
+}
+void dm_audio_volume_set(float v) { volume_env(); if (!(v >= 0)) v = 0; if (v > 2) v = 2; atomic_store(&g_volume_milli, (uint32_t)(v * 1000 + 0.5f)); }
+float dm_audio_volume(void) { volume_env(); return atomic_load(&g_volume_milli) / 1000.f; }
+void dm_audio_mute(unsigned reason, int on) { if (on) atomic_fetch_or(&g_mute_reasons, reason); else atomic_fetch_and(&g_mute_reasons, ~reason); }
+static void apply_volume(uint8_t *dst, uint64_t bytes) {   // int16 samples
+    volume_env();
+    uint32_t v = atomic_load_explicit(&g_mute_reasons, memory_order_relaxed) ? 0 : atomic_load_explicit(&g_volume_milli, memory_order_relaxed);
+    if (v == 1000) return;
+    int16_t *s = (int16_t *)dst; uint64_t n = bytes / sizeof *s;
+    if (!v) { memset(dst, 0, bytes); return; }
+    for (uint64_t i = 0; i < n; i++) { int32_t x = (int32_t)s[i] * (int32_t)v / 1000; s[i] = (int16_t)(x > 32767 ? 32767 : x < -32768 ? -32768 : x); }
+}
+
 static _Atomic uint64_t g_render_calls;   // Cumulative sound card callbacks (lifecycle verification: must keep growing after resume)
 uint64_t dm_audio_render_calls(void) { return atomic_load_explicit(&g_render_calls, memory_order_relaxed); }
 static OSStatus au_render(void *ctx, AudioUnitRenderActionFlags *f, const AudioTimeStamp *ts, UInt32 bus, UInt32 frames, AudioBufferList *bl) {
@@ -156,6 +175,7 @@ static OSStatus au_render(void *ctx, AudioUnitRenderActionFlags *f, const AudioT
             LOG("audio #%d device callbacks %llu: %u–%u frames each, %.1f blocks queued on average at callback; in these 2000, %llu underruns, %.1f ms zero-padded", a->id, (unsigned long long)a->st_calls, a->st_fmin, a->st_fmax, a->st_qsum / 2000.0,
                 (unsigned long long)(un - a->st_u0), (ubb - a->st_ub0) / (2.0 * a->ch) / (RATE / 1000.0)); a->st_fmin = ~0u; a->st_fmax = 0; a->st_qsum = 0; a->st_u0 = un; a->st_ub0 = ubb; } }
     pull_device(a, bl->mBuffers[0].mData, bl->mBuffers[0].mDataByteSize);
+    apply_volume(bl->mBuffers[0].mData, bl->mBuffers[0].mDataByteSize);
     { static int mute = -1; if (mute < 0) { const char *e = getenv("DM_AUDIO_MUTE"); mute = e && atoi(e); }   // diagnostic: the whole real-output path (AudioUnit callback pacing, background take-over) but with the output silenced (lifecycle tests on the Mac without noise)
       if (mute) memset(bl->mBuffers[0].mData, 0, bl->mBuffers[0].mDataByteSize); }
     return noErr;

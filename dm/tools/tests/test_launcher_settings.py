@@ -64,9 +64,23 @@ class LauncherSettingsTests(unittest.TestCase):
         self.assertEqual(build(BOTW, 'nvn', 'ios').keys(), ios.keys())   # ios when unset
         self.assertEqual(set(ios) - set(mac), {'DM_SHOW_FPS', 'DM_TOUCH_HAPTICS'})
         self.assertIn('DM_RUMBLE', mac); self.assertIn('DM_METAL_HUD', mac)
-        self.assertEqual(set(mac) - set(ios), {'DM_FULLSCREEN'})   # the Mac window's Display mode (front_mac.m reads 1 or 0)
+        # the Mac window's own: Display mode (front_mac.m reads 1 or 0) and nxnative refreshed's Mac rows (window, audio, focus, motion, pacing, diagnostics)
+        mac_only = {'DM_FULLSCREEN', 'DM_FULLSCREEN_STYLE', 'DM_WINDOW_SIZE', 'DM_WINDOW_ASPECT', 'DM_WINDOW_TOP', 'DM_CURSOR', 'DM_SCREEN_MATCH', 'DM_VOLUME', 'DM_BG_MUTE',
+                    'DM_BG_INPUT', 'DM_MOTION', 'DM_MOTION_HID', 'DM_MOTION_GAIN', 'DM_MOTION_ACC_SIGN', 'DM_FOCUS_EVENTS', 'DM_AOC_OWNED', 'DM_MOTION_LOG',
+                    'DM_PRESENT_LINK', 'DM_PRESENT_LATENCY', 'DM_PRESENT_FIFO', 'DM_THERMAL_CAP', 'DM_PSO_HYBRID', 'DM_PSO_PREBUILD_THREADS', 'DM_PSO_PREPARE_THREADS',
+                    'DM_PRESENT_INTERVAL', 'DM_MEM_CAP_GB'}
+        self.assertEqual(set(mac) - set(ios), mac_only)
         s = mac['DM_FULLSCREEN']
-        self.assertEqual((s['kind'], s['default'], s['options'], s['level']), ('choice', '0', [['0', 'Window'], ['1', 'Fullscreen']], 'basic'))
+        self.assertEqual((s['kind'], s['default'], s['options'], s['level'], s['section']), ('choice', '0', [['0', 'Window'], ['1', 'Fullscreen']], 'basic', 'Display'))
+
+    def test_mac_rows_by_graphics_api(self):   # the NVN layer's switches only for an NVN game; the rest on every Mac app, with the host's own defaults
+        nvn, vk = build(BOTW, 'nvn', 'mac'), build('0100535012974000', 'vulkan', 'mac')
+        nvn_only = {'DM_PRESENT_LINK', 'DM_PRESENT_LATENCY', 'DM_PRESENT_FIFO', 'DM_THERMAL_CAP', 'DM_PSO_HYBRID', 'DM_PSO_PREBUILD_THREADS', 'DM_PSO_PREPARE_THREADS', 'DM_PRESENT_INTERVAL', 'DM_MEM_CAP_GB'}
+        self.assertTrue(nvn_only <= set(nvn)); self.assertFalse(nvn_only & set(vk))
+        self.assertEqual({e: nvn[e]['default'] for e in ('DM_PRESENT_LINK', 'DM_PRESENT_FIFO', 'DM_MEM_CAP_GB', 'DM_PRESENT_INTERVAL', 'DM_WINDOW_SIZE', 'DM_VOLUME', 'DM_MOTION_GAIN')},
+                         {'DM_PRESENT_LINK': '1', 'DM_PRESENT_FIFO': '1', 'DM_MEM_CAP_GB': '24', 'DM_PRESENT_INTERVAL': 'game', 'DM_WINDOW_SIZE': '1280x720', 'DM_VOLUME': '1.0', 'DM_MOTION_GAIN': '0.5'})
+        self.assertEqual((nvn['DM_MEM_CAP_GB']['unit'], nvn['DM_MOTION_GAIN']['unit'], nvn['DM_VOLUME'].get('unit')), ('GB', 'x', None))
+        self.assertEqual(list(dict.fromkeys(s['section'] for s in nvn.values())), ['Game', 'Display', 'Audio', 'Controls', 'Motion', 'System', 'Performance', 'Advanced'])
 
     def test_defaults_follow_each_platform_host(self):
         # nvn_mtl.m pso4_on: Mac defaults on, iOS follows the profile. nvn_rec.h rec_on: iOS on, Mac off.
@@ -97,13 +111,16 @@ class LauncherSettingsTests(unittest.TestCase):
         self.assertEqual(listed['schema'], 1)
         self.assertEqual([e for e, s in rows.items() if s.get('level') == 'basic'], ['DM_FPS_TARGET', 'DM_RENDER_SCALE', 'DM_OPMODE', 'DM_LANG', 'DM_RUMBLE'])
         self.assertEqual(rows['DM_RUMBLE_GAIN']['needs'], 'DM_RUMBLE=1')
-        self.assertFalse({'level', 'needs'} & set(rows['DM_METAL_HUD']), 'a row without meta has no optional fields')
+        self.assertFalse({'level', 'needs'} & set(rows['DM_METAL_HUD']), 'a row without level or needs has neither')
+        self.assertEqual((rows['DM_METAL_HUD']['group'], rows['DM_RUMBLE_GAIN']['group']), ('Overlays', 'All players'))
 
     def test_meta_is_strict(self):
         self.assertEqual(settings.meta('level=basic; needs=DM_RUMBLE=1', 1), {'level': 'basic', 'needs': 'DM_RUMBLE=1'})
         self.assertEqual(settings.meta('', 1), {})
+        self.assertEqual(settings.meta('group=Frame pacing;unit=GB', 1), {'group': 'Frame pacing', 'unit': 'GB'})
         for bad, why in [('colour=red', 'unknown meta key'), ('level', 'unknown meta key'), ('level=basic;level=basic', 'twice'),
-                         ('level=advanced', 'does not match'), ('needs=DM_RUMBLE', 'does not match'), ('needs=rumble=1', 'does not match')]:
+                         ('level=advanced', 'does not match'), ('needs=DM_RUMBLE', 'does not match'), ('needs=rumble=1', 'does not match'),
+                         ('unit=px', 'does not match'), ('group= leading space', 'does not match')]:
             with self.subTest(bad=bad), self.assertRaises(SystemExit) as e:
                 settings.meta(bad, 1)
             self.assertIn(why, str(e.exception))

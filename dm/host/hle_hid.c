@@ -521,6 +521,7 @@ typedef struct { pthread_mutex_t mu; motion_state st; uint64_t last_ns, received
 static live_motion g_motion[DM_PLAYERS] = {[0 ... DM_PLAYERS - 1] = {.mu = PTHREAD_MUTEX_INITIALIZER}};
 static live_motion g_hid_motion[DM_PLAYERS] = {[0 ... DM_PLAYERS - 1] = {.mu = PTHREAD_MUTEX_INITIALIZER}};
 static live_motion g_phone_motion = {.mu = PTHREAD_MUTEX_INITIALIZER};
+static live_motion g_emu_motion[DM_PLAYERS] = {[0 ... DM_PLAYERS - 1] = {.mu = PTHREAD_MUTEX_INITIALIZER}};   // nxnative refreshed: keyboard tilt / mouse gyro (front_mac.m, input_map.h)
 static pthread_once_t g_motion_once = PTHREAD_ONCE_INIT;
 static motion_map g_motion_map; static float g_motion_gain = 0.5f; static int g_motion_off, g_motion_log, g_phone_mode;
 static void motion_env(void) {
@@ -536,7 +537,7 @@ static void motion_set(int p, const float acc[3], const float rot[3], int source
     pthread_once(&g_motion_once, motion_env); if (g_motion_off) return;
     static motion_map identity = {{0, 1, 2}, {1, 1, 1}, 1, 1};
     // Each transport owns its orientation. HID batches carry three sample times; arrival time controls freshness, never their integration intervals.
-    live_motion *m = source == 1 ? &g_phone_motion : source == 2 ? &g_hid_motion[p] : &g_motion[p];
+    live_motion *m = source == 1 ? &g_phone_motion : source == 2 ? &g_hid_motion[p] : source == 3 ? &g_emu_motion[p] : &g_motion[p];
     uint64_t now = now_ns(), t = sample_ns ? sample_ns : now;
     if (!t || t > now || now - t > MOTION_STALE_NS) return;
     pthread_mutex_lock(&m->mu);
@@ -547,7 +548,7 @@ static void motion_set(int p, const float acc[3], const float rot[3], int source
     if (g_motion_log && !p && t - m->logged > 1000000000ull) {
         m->logged = t;
         LOG("[hid] motion player 1 (%s): acc %+.2f %+.2f %+.2f G, gyro %+.3f %+.3f %+.3f rev/s (flat and still should read acc 0 0 -1)",
-            source == 1 ? "phone" : source == 2 ? "controller HID" : "controller", m->st.acc[0], m->st.acc[1], m->st.acc[2], m->st.gyro[0], m->st.gyro[1], m->st.gyro[2]);
+            source == 1 ? "phone" : source == 2 ? "controller HID" : source == 3 ? "emulated" : "controller", m->st.acc[0], m->st.acc[1], m->st.acc[2], m->st.gyro[0], m->st.gyro[1], m->st.gyro[2]);
     }
     m->last_ns = t; m->received_ns = now;
     pthread_mutex_unlock(&m->mu);
@@ -555,6 +556,19 @@ static void motion_set(int p, const float acc[3], const float rot[3], int source
 void dm_motion_set(int p, const float acc[3], const float rot[3]) { motion_set(p, acc, rot, 0, 0); }
 void dm_motion_set_switch(int p, const float acc[3], const float rot[3]) { motion_set(p, acc, rot, 1, 0); }
 void dm_motion_set_hid(int p, const float acc[3], const float rot[3], uint64_t t) { if (t) motion_set(p, acc, rot, 2, t); }
+// Emulated motion is already in the Switch frame (identity map, as the phone's); a player's emulated source and its controller's are kept apart, and the newest fresh one is read
+void dm_motion_set_emulated(int p, const float acc[3], const float rot[3]) { motion_set(p, acc, rot, 3, 0); }
+void dm_motion_clear_emulated(int p) {
+    if (p < 0 || p >= DM_PLAYERS) return;
+    pthread_mutex_lock(&g_emu_motion[p].mu); g_emu_motion[p].last_ns = 0; pthread_mutex_unlock(&g_emu_motion[p].mu);
+}
+// Recenter: every source of the player starts again from its next sample, level with gravity and facing forward (motion_update primes a reset state); yaw drift is gone
+void dm_motion_recenter(int p) {
+    if (p < 0 || p >= DM_PLAYERS) return;
+    live_motion *all[] = {&g_motion[p], &g_hid_motion[p], &g_emu_motion[p], p ? NULL : &g_phone_motion};
+    for (size_t i = 0; i < sizeof all / sizeof *all; i++) if (all[i]) { pthread_mutex_lock(&all[i]->mu); all[i]->last_ns = 0; pthread_mutex_unlock(&all[i]->mu); }
+    LOG("[hid] motion of player %d recentered", p + 1);
+}
 void dm_motion_clear(int p) {
     if (p < 0 || p >= DM_PLAYERS) return;
     pthread_mutex_lock(&g_motion[p].mu); g_motion[p].last_ns = 0; pthread_mutex_unlock(&g_motion[p].mu);
@@ -581,6 +595,8 @@ static int motion_live(int p, motion_state *out) {
         motion_state st; uint64_t t = motion_copy(&g_motion[i], &st);
         if (!t) t = motion_copy(&g_hid_motion[i], &st);
         if (t > newest) { newest = t; *out = st; }
+        motion_state em; uint64_t te = motion_copy(&g_emu_motion[i], &em);
+        if (te > newest) { newest = te; *out = em; }
     }
     if (newest) return 1;
     return !p && g_phone_mode < 0 && motion_copy(&g_phone_motion, out);

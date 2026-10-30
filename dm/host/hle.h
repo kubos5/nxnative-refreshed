@@ -65,3 +65,7 @@ int dm_movie_playing(void);   // hle_movie.c: a video decoder of the SDK's movie
 void dm_audio_suspend(int on);
 uint64_t dm_audio_render_calls(void);   // Cumulative sound card callback count (the silent sink is not counted)
 void dm_audio_reset(void);   // iOS media services reset: recreate the AudioUnits (hle_audio.c)
+// nxnative refreshed: the output volume (0 to 2, 1 = as the game mixes it; DM_VOLUME sets it at start) and a mute the front end toggles (hotkey, window in the background), any thread
+void dm_audio_volume_set(float v);
+float dm_audio_volume(void);
+void dm_audio_mute(unsigned reason, int on);   // muted while any reason is set (1: the player's mute hotkey, 2: the window is in the background)

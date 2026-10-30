@@ -7,6 +7,8 @@ struct Setting: Decodable, Identifiable {
     let section: String?   // heading on the settings screen; absent in older bundles
     let needs: String?     // "<VAR>=<value>": a sub-setting, drawn only while that setting has that value
     let level: String?     // "basic": shown first (the Mac window's Basic settings); any other or none: Advanced settings. The iPhone keeps one list
+    let group: String?     // a sub-heading within the section (nxnative refreshed's Mac window); absent in older bundles
+    let unit: String?      // a range's unit: % (absent), x, GB, threads
     let base: Base?        // render scale: the 3D views' size at 1.0, docked and handheld, for the size in pixels (the Mac window)
     struct Base: Decodable { let docked, handheld: [Int] }
     let options: [[String]]?   // choice: [value, label]
@@ -30,7 +32,7 @@ struct Setting: Decodable, Identifiable {
         default: return true
         }
     }
-    enum CodingKeys: String, CodingKey { case env, kind, label, note, def = "default", section, needs, level, base, options, min, max, step, on, off }
+    enum CodingKeys: String, CodingKey { case env, kind, label, note, def = "default", section, needs, level, group, unit, base, options, min, max, step, on, off }
 }
 struct SettingsFile: Decodable { let settings: [Setting] }
 
@@ -101,6 +103,15 @@ final class LauncherModel: ObservableObject {
             if fixed.contains(s.env) { fputs("launcher: \(s.env) kept at \(v) (\(fromLaunch.contains(s.env) ? "launch environment" : "env file"))\n", stderr); continue }
             if !ignoreSaved { if s.isDefault(v) { defaults.removeObject(forKey: "launcher." + s.env) } else { defaults.set(v, forKey: "launcher." + s.env) } }
             setenv(s.env, v, 1); fputs("launcher: \(s.env)=\(v)\(s.isDefault(v) ? "" : " (changed)")\n", stderr)
+        }
+    }
+
+    // nxnative refreshed's Mac window keeps each change as it is made (Quit keeps it too): the store as apply() leaves it, without the environment
+    func persist() {
+        guard !ignoreSaved else { return }
+        for s in settings where !fixed.contains(s.env) {
+            let v = values[s.env] ?? s.def
+            if s.isDefault(v) { defaults.removeObject(forKey: "launcher." + s.env) } else { defaults.set(v, forKey: "launcher." + s.env) }
         }
     }
 

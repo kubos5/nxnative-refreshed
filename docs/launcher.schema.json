@@ -18,7 +18,7 @@
       "properties": {
         "env": {"description": "The environment switch the setting sets.", "type": "string", "pattern": "^DM_[A-Z0-9_]+$"},
         "kind": {"enum": ["choice", "range", "toggle"]},
-        "section": {"description": "The heading it goes under (Game, Controls and Performance today); sections and rows come in the order to show them. A reader draws a section it does not know like the others, under its name.", "type": "string"},
+        "section": {"description": "The heading it goes under (Game, Display, Audio, Controls, Motion, System, Performance and Advanced today); sections and rows come in the order to show them. A reader draws a section it does not know like the others, under its name.", "type": "string"},
         "label": {"type": "string"},
         "note": {"description": "The line under the label; empty for most settings.", "type": "string"},
         "default": {"description": "The tested default for this app's platform, with profile defaults resolved.", "type": "string"},
@@ -31,7 +31,9 @@
         "base": {"description": "Render scale only: the 3D views' size the scale multiplies, docked and handheld, from the game's profile; absent for most games.", "type": "object", "required": ["docked", "handheld"],
                  "properties": {"docked": {"$ref": "#/$defs/size"}, "handheld": {"$ref": "#/$defs/size"}}},
         "level": {"description": "basic: a setting a front end shows first. Without it, the front end decides.", "const": "basic"},
-        "needs": {"description": "<VAR>=<value>: a sub-setting, drawn only while the row that sets <VAR> has that value. A row naming a variable this list does not have stays drawn.", "type": "string", "pattern": "^DM_[A-Z0-9_]+=[^;=]+$"}
+        "needs": {"description": "<VAR>=<value>: a sub-setting, drawn only while the row that sets <VAR> has that value. A row naming a variable this list does not have stays drawn.", "type": "string", "pattern": "^DM_[A-Z0-9_]+=[^;=]+$"},
+        "group": {"description": "A sub-heading within the section (nxnative refreshed's Mac window draws one box per group). Without it, the row goes under the section alone.", "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 &/()+-]*$"},
+        "unit": {"description": "range: how its value reads: % (a percentage, the default), x (a factor), GB, threads (a count). A reader that does not know it shows a percentage.", "enum": ["%", "x", "GB", "threads"]}
       },
       "allOf": [
         {"if": {"properties": {"kind": {"const": "choice"}}}, "then": {"required": ["options"]}},

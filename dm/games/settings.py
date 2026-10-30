@@ -10,13 +10,15 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE)); sys.path.insert(0, str(HERE.parent / 'tools'))
 import game, nacp
 
-SECTIONS = ('Game', 'Controls', 'Performance')   # headings on the single settings screen
+SECTIONS = ('Game', 'Display', 'Audio', 'Controls', 'Motion', 'System', 'Performance', 'Advanced')   # headings on the settings screen (the Mac window's pages)
 SCHEMA = 1   # launcher.json's version (docs/launcher.schema.json); it grows only by optional fields, so a reader of 1 reads every 1
 # The meta column's keys, each with the pattern its value must match. A key is added here, in docs/frontends.md and in
 # docs/launcher.schema.json together (test_launcher_settings.py checks that the three agree); a reader ignores keys it does not know
 META = {
     'level': r'basic',                       # a setting a front end shows first; without it, the front end decides
     'needs': r'DM_[A-Z0-9_]+=[^;=]+',        # <VAR>=<value>: a sub-setting, drawn only while the row that sets <VAR> has that value
+    'group': r'[A-Za-z0-9][A-Za-z0-9 &/()+-]*',   # a sub-heading within the section (the Mac window's sub-categories)
+    'unit': r'%|x|GB|threads',               # how a range's value reads: a percentage (the default), a factor, gigabytes, a count of threads
 }
 
 
@@ -69,6 +71,7 @@ def build(gid, patched, control):
         return macros[name].strip('"')
 
     def shown(cond, n):
+        if '&' in cond: return all(shown(c, n) for c in cond.split('&'))
         if cond == 'always': return True
         if cond == 'languages>1': return len(langs) > 1
         if cond.startswith('fixups:'): return cond[7:] in keys

@@ -7,28 +7,54 @@
 #             toggle: values - (on sets 1, off 0) or <on>/<off>, the two values the variable takes (on/off)
 #   default   a value (a toggle's: 1 on, 0 off); DM_GAME_<NAME>: the host's own default from the game profile (game_profile.h, game.py); build:<VAR>: the IPA build's setting (build_ipa.sh)
 #             <ios>|<mac> selects the platform's default before resolving a profile macro or build variable
-#   shown     always; DM_GAME_<NAME>!=<value> or ==<value>; fixups:<KEY>: main's rewriter table has that key (a stub in the game's build, patch_nso.py); languages>1; gfxapi:<API>: the packer's GFXAPI;
+#   shown     always; DM_GAME_<NAME>!=<value> or ==<value>; conditions joined by & all hold; fixups:<KEY>: main's rewriter table has that key (a stub in the game's build, patch_nso.py); languages>1; gfxapi:<API>: the packer's GFXAPI;
 #             platform:<ios | mac>: the app's platform (SETTINGS_PLATFORM, ios when unset), for a switch only that platform's front end reads
-#   section   Game, Controls or Performance: a heading on the single settings screen. Rows appear in table order within each section
+#   section   Game, Display, Audio, Controls, Motion, System, Performance or Advanced: a heading on the settings screen (a page of the Mac window). Rows appear in table order within each section
 #             Reset to tested defaults clears all launcher choices; values fixed by an env file stay
 #   label, note  the setting's name and the line under it (may be empty; only for a setting with a cost: latency, memory, heat)
 #   meta      optional, key=value pairs separated by ; (settings.py META lists the keys; docs/frontends.md, The settings list, describes them):
-#             level=basic  a setting a front end shows first;  needs=<VAR>=<value>  a sub-setting, drawn only while the row that sets <VAR> has that value
-DM_FPS_TARGET	choice	30=30 fps,60=60 fps	DM_GAME_FPS_TARGET	DM_GAME_FPS_TARGET!=0	Game	Frame rate		level=basic
-DM_DYNAMIC_RESOLUTION	toggle	-	0	fixups:DYNAMIC_RESOLUTION	Game	Dynamic resolution	Adjusts resolution between 70% and 100% under load. Turn off to keep full resolution for the selected console mode.
-DM_RENDER_SCALE	range	0.5:1.0:0.05	1.0	fixups:RENDER_SCALE	Game	Render scale		level=basic
-DM_OPMODE	choice	1=Docked,0=Handheld	DM_GAME_OPMODE	always	Game	Console mode		level=basic
-DM_PRESENT_UPSCALE	choice	off=Standard,metalfx=MetalFX	off	always	Game	Upscaling	Uses more GPU time and can increase heat.
-DM_LANG	choice	languages	build:DM_LANG	languages>1	Game	Game language		level=basic
-DM_FULLSCREEN	choice	0=Window,1=Fullscreen	0	platform:mac	Game	Display mode		level=basic
-DM_SHOW_FPS	toggle	-	build:DM_SHOW_FPS	platform:ios	Game	Frame-rate counter
-DM_TOUCH_HAPTICS	toggle	-	1	platform:ios	Controls	Touch feedback
-DM_RUMBLE	toggle	-	1	always	Controls	Game rumble		level=basic
-DM_RUMBLE_GAIN	range	0:3:0.1	1.0	always	Controls	Rumble strength		needs=DM_RUMBLE=1
-DM_RUMBLE_MIN	range	0:0.9:0.05	0	always	Controls	Rumble cutoff
-DM_PRESENT_SNAP	toggle	-	DM_GAME_PRESENT_SNAP	gfxapi:nvn	Performance	Frame buffering	Up to one frame more display latency.
-DM_PSO_MTL4	toggle	-	DM_GAME_PSO_MTL4|1	gfxapi:nvn	Performance	Metal 4 pipelines	Keeps a pipeline archive; uses more memory.
-DM_PSO_PREBUILD	toggle	-	1	gfxapi:nvn	Performance	Pipeline prebuild	The first start waits a few minutes for it, once.
-DM_NVN_ENC_THREAD	toggle	-	1|DM_GAME_ENC_THREAD	gfxapi:nvn	Performance	Encode thread
-DM_FPS_HOLD	toggle	on/off	DM_GAME_FPS_HOLD	DM_GAME_FPS_TARGET!=0	Performance	Hold frames when late
-DM_METAL_HUD	toggle	-	0	always	Performance	Performance HUD
+#             level=basic  a setting a front end shows first;  needs=<VAR>=<value>  a sub-setting, drawn only while the row that sets <VAR> has that value;
+#             group=<name>  a sub-heading within the section;  unit=<% | x | GB | threads>  how a range's value reads (% by default)
+DM_FPS_TARGET	choice	30=30 fps,60=60 fps	DM_GAME_FPS_TARGET	DM_GAME_FPS_TARGET!=0	Game	Frame rate		level=basic;group=Frame rate
+DM_DYNAMIC_RESOLUTION	toggle	-	0	fixups:DYNAMIC_RESOLUTION	Game	Dynamic resolution	Adjusts resolution between 70% and 100% under load. Turn off to keep full resolution for the selected console mode.	group=Resolution
+DM_RENDER_SCALE	range	0.5:1.0:0.05	1.0	fixups:RENDER_SCALE	Game	Render scale		level=basic;group=Resolution
+DM_OPMODE	choice	1=Docked,0=Handheld	DM_GAME_OPMODE	always	Game	Console mode		level=basic;group=Console
+DM_PRESENT_UPSCALE	choice	off=Standard,metalfx=MetalFX	off	always	Game	Upscaling	Uses more GPU time and can increase heat.	group=Resolution
+DM_LANG	choice	languages	build:DM_LANG	languages>1	Game	Game language		level=basic;group=Console
+DM_FULLSCREEN	choice	0=Window,1=Fullscreen	0	platform:mac	Display	Display mode		level=basic;group=Window
+DM_FULLSCREEN_STYLE	choice	space=macOS full screen (a Space of its own),borderless=Borderless (instant; menu bar and Dock hidden)	space	platform:mac	Display	Fullscreen style		group=Window
+DM_WINDOW_SIZE	choice	1280x720=1280 × 720,1600x900=1600 × 900,1920x1080=1920 × 1080,2560x1440=2560 × 1440,3840x2160=3840 × 2160,fit=Fit the screen,remember=Where it was last	1280x720	platform:mac	Display	Window size		group=Window
+DM_WINDOW_ASPECT	toggle	-	0	platform:mac	Display	Keep 16:9 when resizing	No black bars around the game in a window.	group=Window
+DM_WINDOW_TOP	toggle	-	0	platform:mac	Display	Keep the window in front of other apps		group=Window
+DM_CURSOR	choice	show=Always show,auto=Hide when idle,hide=Always hide	show	platform:mac	Display	Pointer over the game		group=Pointer
+DM_SCREEN_MATCH	toggle	-	1	platform:mac	Display	Match the screen's refresh rate in fullscreen	Switches a 144 Hz screen to 120 Hz while the game is fullscreen, for even 60 / 30 fps.	group=Refresh rate
+DM_VOLUME	range	0:2:0.05	1.0	platform:mac	Audio	Volume		group=Output
+DM_BG_MUTE	toggle	-	0	platform:mac	Audio	Mute while the game is in the background		group=Output
+DM_SHOW_FPS	toggle	-	build:DM_SHOW_FPS	platform:ios	Game	Frame-rate counter		group=Overlays
+DM_TOUCH_HAPTICS	toggle	-	1	platform:ios	Controls	Touch feedback		group=Touch
+DM_RUMBLE	toggle	-	1	always	Controls	Game rumble		level=basic;group=All players
+DM_RUMBLE_GAIN	range	0:3:0.1	1.0	always	Controls	Rumble strength		needs=DM_RUMBLE=1;group=All players
+DM_RUMBLE_MIN	range	0:0.9:0.05	0	always	Controls	Rumble cutoff		group=All players
+DM_BG_INPUT	toggle	-	0	platform:mac	Controls	Controllers keep playing in the background	For playing while another window is in front (streaming, a second screen).	group=Focus
+DM_MOTION	toggle	-	1	platform:mac	Motion	Motion controls	Off: every controller's motion sensors lie still.	group=All players
+DM_MOTION_HID	toggle	-	1	platform:mac	Motion	Read a Pro Controller's motion directly	macOS reports none for it; the app reads the controller's own reports.	needs=DM_MOTION=1;group=Controllers
+DM_MOTION_GAIN	range	0:2:0.05	0.5	platform:mac	Motion	Tilt drift correction	How fast the sensed tilt is pulled back toward gravity; 0: never.	needs=DM_MOTION=1;group=Tuning;unit=x
+DM_MOTION_ACC_SIGN	choice	1=Normal,-1=Flipped	1	platform:mac	Motion	Accelerometer direction	For a controller whose tilt comes out upside down.	needs=DM_MOTION=1;group=Tuning
+DM_FOCUS_EVENTS	toggle	-	1	platform:mac	System	Tell the game when the window loses focus	Off: the game runs on as if it were in front.	group=Focus
+DM_AOC_OWNED	toggle	-	1	platform:mac	System	Use the packed DLC	Off: the game sees no downloadable content.	group=Content
+DM_PRESENT_SNAP	toggle	-	DM_GAME_PRESENT_SNAP	gfxapi:nvn	Performance	Frame buffering	Up to one frame more display latency.	group=Frame pacing
+DM_PSO_MTL4	toggle	-	DM_GAME_PSO_MTL4|1	gfxapi:nvn	Performance	Metal 4 pipelines	Keeps a pipeline archive; uses more memory.	group=Pipelines
+DM_PSO_PREBUILD	toggle	-	1	gfxapi:nvn	Performance	Pipeline prebuild	The first start waits a few minutes for it, once.	group=Pipelines
+DM_NVN_ENC_THREAD	toggle	-	1|DM_GAME_ENC_THREAD	gfxapi:nvn	Performance	Encode thread		group=Threads
+DM_FPS_HOLD	toggle	on/off	DM_GAME_FPS_HOLD	DM_GAME_FPS_TARGET!=0	Performance	Hold frames when late		group=Frame pacing
+DM_METAL_HUD	toggle	-	0	always	Performance	Performance HUD		group=Overlays
+DM_PRESENT_LINK	choice	1=60 Hz,2=120 Hz,0=Off	1	gfxapi:nvn&platform:mac	Performance	Display link	At 120 Hz a late frame can show on the next 8 ms tick.	group=Frame pacing
+DM_PRESENT_LATENCY	choice	0=Automatic,1=1 frame,2=2 frames,3=3 frames	0	gfxapi:nvn&platform:mac	Performance	Frames queued for the screen	Fewer: less input lag. More: smoother when frames come late.	group=Frame pacing
+DM_PRESENT_FIFO	toggle	-	1	gfxapi:nvn&platform:mac	Performance	Show every frame in order	Off: the newest frame at each refresh; a late one is dropped.	group=Frame pacing
+DM_THERMAL_CAP	toggle	-	1	gfxapi:nvn&platform:mac	Performance	Hold 30 fps while the Mac runs hot		group=Power
+DM_PSO_HYBRID	toggle	-	1	gfxapi:nvn&platform:mac	Performance	Hybrid pipelines	Off: a draw waits for its own pipeline instead of a stand-in, and stutters.	needs=DM_PSO_MTL4=1;group=Pipelines
+DM_PSO_PREBUILD_THREADS	range	0:16:1	0	gfxapi:nvn&platform:mac	Performance	Prebuild threads	0: automatic.	needs=DM_PSO_PREBUILD=1;group=Pipelines;unit=threads
+DM_PSO_PREPARE_THREADS	range	0:16:1	0	gfxapi:nvn&platform:mac	Performance	Prepare threads	0: automatic.	group=Pipelines;unit=threads
+DM_PRESENT_INTERVAL	toggle	display/game	DM_GAME_PRESENT_DISPLAY	gfxapi:nvn&platform:mac	Advanced	One frame per refresh	Ignores the game's own present interval: a cut, only for games tested with it.	group=Frame pacing
+DM_MEM_CAP_GB	range	0:64:1	24	gfxapi:nvn&platform:mac	Advanced	Memory limit	The game stops with a log line past it, before the Mac runs out; 0: no limit.	group=Safety;unit=GB
+DM_MOTION_LOG	toggle	-	0	platform:mac	Advanced	Log player 1's motion once a second	For checking a controller's axes in the log.	group=Diagnostics

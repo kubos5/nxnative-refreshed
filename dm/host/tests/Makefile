@@ -45,6 +45,8 @@ run: $(B)/t_language $(B)/t_motion $(B)/t_heap_size $(B)/t_touch $(B)/t_gesture 
 	$(B)/t_movie_avc
 	$(B)/t_nv
 	$(B)/t_motion
+	$(B)/t_input_map
+	$(B)/t_input_json input_default.json
 	$(B)/t_motion_apple
 	$(B)/t_pad_apple
 	$(B)/t_motion_pro
@@ -148,6 +150,12 @@ $(B)/t_language: t_language.c ../hle_sdk16.c ../hle.h ../dm.h $(GAME_H) | $(B)
 	$(CLANG) -O1 -g -Wall -Werror -Wno-unused-function -Wno-frame-address -fsanitize=address,undefined -I.. $(GINC) -o $@ t_language.c
 $(B)/t_motion: t_motion.c ../motion_fusion.h | $(B)
 	$(CLANG) -O1 -Wall -Werror -Wno-unused-function -o $@ t_motion.c -lm
+run: $(B)/t_input_json
+$(B)/t_input_json: t_input_json.m input_default.json ../input_json.h ../input_map.h ../dm_input.h | $(B)
+	$(CLANG) -O1 -g -fobjc-arc -Wall -Werror -Wno-unused-function -I.. -o $@ t_input_json.m -framework Foundation
+run: $(B)/t_input_map
+$(B)/t_input_map: t_input_map.c ../input_map.h ../dm_input.h | $(B)
+	$(CLANG) -O1 -g -Wall -Werror -Wno-unused-function -o $@ t_input_map.c -lm
 run: $(B)/t_motion_apple
 $(B)/t_motion_apple: t_motion_apple.m ../motion_apple.h ../dm_input.h | $(B)
 	$(CLANG) -O1 -g -fobjc-arc -Wall -Werror -I.. -o $@ t_motion_apple.m -framework Foundation -framework GameController

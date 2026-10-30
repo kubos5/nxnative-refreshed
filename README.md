@@ -1,4 +1,24 @@
-# nxnative
+# nxnative refreshed
+
+A fork of [nxnative](https://github.com/seedds/nxnative) that makes its Mac apps as good to use as its iPhone apps. Everything nxnative does still works the same way: the build script, the games and the iPhone app are unchanged. Build a Mac app as below with `--platform mac-app`, and it comes with:
+
+- **A full settings window before the game starts.** Each subject has its own page in a sidebar: Game, Display, Audio, Performance, Players, Controls, Sticks and Mouse, Motion, Rumble, Hotkeys, System, Saves and Data, Advanced. Pages are split into sub-sections. Every option has a reset button beside it, every page has **Reset Page**, and **Reset All** brings back every default. Changes are kept as you make them. The defaults are nxnative's own values, so an untouched app plays exactly as before.
+- **Any input on any key, mouse button or controller button.** Every Switch button, both sticks' four directions, shake, tilt, turn and recenter can each take two keys, a mouse button or wheel direction, and two controller elements (paddles and the touchpad too). Record a binding by pressing it, or pick it from a list (useful for a controller that isn't connected). Each input can be **Hold**, **Toggle** (an auto-run on a stick direction) or **Turbo**. Conflicts are flagged, and presets cover common layouts (Xbox-style face buttons, mouse camera, two players on one keyboard).
+- **Up to eight players.** Each player chooses the keyboard, the mouse, and a controller (automatic, none, the n-th one connected, or one by name). Play with controllers only, give the keyboard to Player 1 and controllers to the rest, put two players on one keyboard, or merge everything into Player 1.
+- **Sticks and mouse.** Per player: dead zone, outer edge, response curve (with a live graph), sensitivity, minimum output and inversion for each stick; trigger and stick press points; how far a key tilts a stick; a **Walk** key; the turbo rate. The mouse can be the touchscreen, the right or left stick (camera), or the gyro, with its own sensitivity, smoothing and inversion. The pointer is captured with a click and released with Esc.
+- **HD Rumble and motion, configurable per player.** Rumble: on or off, strength, low band (160 Hz) and high band (320 Hz) separately, cutoff, swap motors, and a **Try it** button. Motion: from the controller's gyro, the mouse or tilt keys, with gyro sensitivity, per-axis inversion, tilt angle and speed, turning, return to level, and recentering. Players 2 to 8 can shake as well.
+- **Hotkeys** on a key or a controller button (Home and Share are free otherwise): fullscreen, capture or release the mouse, mute, volume, recenter motion, performance HUD, quit.
+- **More for the Mac:** borderless fullscreen, a starting window size or "where it was last", 16:9 window resizing, pointer hiding, volume, mute in the background, controllers that keep playing in the background, input profiles shared by all your games, export and import of settings, one-click save backups, an `env.txt` editor, extra environment variables, and nearly every switch the host reads (frame pacing, pipelines, threads, memory limit, motion tuning).
+
+<p><img src="docs/images/refreshed/controls.png" width="32%" alt="Controls page: every Switch input with keyboard, mouse and controller columns"> <img src="docs/images/refreshed/players.png" width="32%" alt="Players page: keyboard, mouse and controller per player"> <img src="docs/images/refreshed/sticks.png" width="32%" alt="Sticks and Mouse page: dead zones and response curves"></p>
+
+What changed where: [Settings](docs/settings.md#the-mac-settings-window). The input engine is `dm/host/input_map.h`; the window is `dm/mac/*.swift`.
+
+Not yet confirmed: these changes are covered by unit tests, and the host and the window were built, but they have not been played with a real game, controller or rumble motor. Please report what you find.
+
+---
+
+What follows is nxnative's own README.
 
 Play your own Nintendo Switch games natively on iPhone and iPad. Bring your game (its NSP files) and your `prod.keys`; one script turns them into an IPA that you sideload.
 
